@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'screens/theme.dart'; // استدعاء ملف الثيم اللي سويناه
 import 'screens/splash_screen.dart';
 
 void main() {
@@ -12,12 +13,9 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Parent Connect',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-      ),
-      home: const SplashScreen(),
       debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme, // ربط الثيم المخصص
+      home: const SplashScreen(),
     );
   }
 }
