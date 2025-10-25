@@ -1,19 +1,43 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'theme.dart';
 import 'location_selection_screen.dart';
 
-class ChildInfoScreen extends StatelessWidget {
+class ChildInfoScreen extends StatefulWidget {
   final List<Map<String, dynamic>> children;
 
   const ChildInfoScreen({super.key, required this.children});
 
   @override
+  State<ChildInfoScreen> createState() => _ChildInfoScreenState();
+}
+
+class _ChildInfoScreenState extends State<ChildInfoScreen> {
+  final Map<int, Set<String>> _selectedInterests = {};
+  final Map<int, String> _birthdays = {};
+  final Map<int, String> _ids = {};
+  final Map<int, String> _gender = {};
+  final Map<int, String> _notes = {};
+  final Map<int, Set<String>> _selectedCategories = {}; // هنا نخزن أكثر من كاتيجوري
+
+  final Map<String, List<String>> _interestsMap = {
+    'Sports': ['Football', 'Basketball', 'Tennis', 'Swimming', 'Volleyball', 'Gymnastics'],
+    'Languages': ['English', 'French', 'Chinese', 'Spanish', 'Arabic'],
+    'Self-defense': ['Karate', 'Taekwondo', 'Judo', 'Boxing', 'Kung Fu'],
+    'Arts': ['Painting', 'Drawing', 'Music', 'Dance', 'Photography'],
+    'Literature & Communication': ['Public Speaking', 'Writing', 'Storytelling', 'Debate Club', 'Theater'],
+    'Technology': ['Coding', 'Robotics', 'Game Design', '3D Printing', 'Electronics'],
+    'Clubs & Activities': ['Science Club', 'Drama Club', 'Debate Club', 'Leadership'],
+  };
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFCFDF2),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Child Information'),
-        backgroundColor: const Color(0xFF80C4C0),
-        foregroundColor: Colors.white,
+        title: const Text('Child Information', style: AppTextStyles.heading),
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.white,
       ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
@@ -22,19 +46,22 @@ class ChildInfoScreen extends StatelessWidget {
           children: [
             const Text(
               'Children Information & Interests',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1F3558),
-              ),
+              style: AppTextStyles.heading,
             ),
             const SizedBox(height: 20),
-            
+
             Expanded(
               child: ListView.builder(
-                itemCount: children.length,
+                itemCount: widget.children.length,
                 itemBuilder: (context, index) {
-                  final child = children[index];
+                  final child = widget.children[index];
+                  _selectedInterests.putIfAbsent(index, () => {});
+                  _birthdays.putIfAbsent(index, () => "");
+                  _ids.putIfAbsent(index, () => "");
+                  _gender.putIfAbsent(index, () => "Male");
+                  _notes.putIfAbsent(index, () => "");
+                  _selectedCategories.putIfAbsent(index, () => {});
+
                   return Card(
                     margin: const EdgeInsets.only(bottom: 15),
                     child: Padding(
@@ -42,59 +69,150 @@ class ChildInfoScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // معلومات الطفل الأساسية
+                          // الاسم
                           Row(
                             children: [
-                              const Icon(Icons.child_care, color: Color(0xFF80C4C0)),
+                              const Icon(Icons.child_care, color: AppColors.primary),
                               const SizedBox(width: 10),
                               Text(
                                 '${child['firstName']} ${child['lastName']}',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF1F3558),
-                                ),
+                                style: AppTextStyles.body,
                               ),
                             ],
                           ),
                           const SizedBox(height: 10),
+
+                          // العمر
                           Text(
                             'Age: ${child['age']} years',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey,
+                            style: const TextStyle(fontSize: 16, color: Colors.grey),
+                          ),
+                          const SizedBox(height: 15),
+
+                          // Gender
+                          DropdownButtonFormField<String>(
+                            value: _gender[index],
+                            items: ['Male', 'Female'].map((g) {
+                              return DropdownMenuItem(value: g, child: Text(g));
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _gender[index] = value!;
+                              });
+                            },
+                            decoration: const InputDecoration(
+                              labelText: 'Gender',
+                              border: OutlineInputBorder(),
                             ),
                           ),
                           const SizedBox(height: 15),
-                          
-                          // الاهتمامات
-                          const Text(
-                            'Select Interests:',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+
+                          // Birthday
+                          TextFormField(
+                            readOnly: true,
+                            decoration: const InputDecoration(
+                              labelText: 'Birthday',
+                              border: OutlineInputBorder(),
                             ),
+                            onTap: () async {
+                              final pickedDate = await showDatePicker(
+                                context: context,
+                                initialDate: DateTime(2010),
+                                firstDate: DateTime(2000),
+                                lastDate: DateTime.now(),
+                              );
+                              if (pickedDate != null) {
+                                setState(() {
+                                  _birthdays[index] =
+                                      "${pickedDate.day}/${pickedDate.month}/${pickedDate.year}";
+                                });
+                              }
+                            },
+                            controller: TextEditingController(text: _birthdays[index]),
                           ),
+                          const SizedBox(height: 15),
+
+                          // Child ID
+                          TextFormField(
+                            decoration: const InputDecoration(
+                              labelText: 'Child ID',
+                              border: OutlineInputBorder(),
+                            ),
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                            onChanged: (value) => _ids[index] = value,
+                          ),
+                          const SizedBox(height: 20),
+
+                          // اختيار الكاتيجوري
+                          const Text("Select Interest Categories:", style: AppTextStyles.body),
                           const SizedBox(height: 10),
-                          
-                          // Sports Interests
-                          _buildInterestSection(
-                            title: 'Sports',
-                            interests: ['Football', 'Tennis', 'Paddle', 'Basketball', 'Swimming', 'Volleyball'],
+
+                          Column(
+                            children: _interestsMap.keys.map((category) {
+                              final isCategorySelected = _selectedCategories[index]!.contains(category);
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  CheckboxListTile(
+                                    title: Text(category),
+                                    value: isCategorySelected,
+                                    onChanged: (bool? selected) {
+                                      setState(() {
+                                        if (selected == true) {
+                                          _selectedCategories[index]!.add(category);
+                                        } else {
+                                          _selectedCategories[index]!.remove(category);
+                                          _selectedInterests[index]!.removeWhere(
+                                            (interest) => _interestsMap[category]!.contains(interest),
+                                          );
+                                        }
+                                      });
+                                    },
+                                  ),
+
+                                  // إذا اختار الكاتيجوري، نعرض اهتماماته
+                                  if (isCategorySelected) ...[
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: _interestsMap[category]!.map((interest) {
+                                        final isSelected = _selectedInterests[index]!.contains(interest);
+                                        return FilterChip(
+                                          label: Text(interest),
+                                          selected: isSelected,
+                                          onSelected: (bool selected) {
+                                            setState(() {
+                                              if (selected) {
+                                                _selectedInterests[index]!.add(interest);
+                                              } else {
+                                                _selectedInterests[index]!.remove(interest);
+                                              }
+                                            });
+                                          },
+                                          selectedColor: AppColors.primary,
+                                          checkmarkColor: Colors.white,
+                                          backgroundColor: Colors.grey[200],
+                                        );
+                                      }).toList(),
+                                    ),
+                                    const SizedBox(height: 15),
+                                  ],
+                                ],
+                              );
+                            }).toList(),
                           ),
-                          const SizedBox(height: 15),
-                          
-                          // Languages Interests
-                          _buildInterestSection(
-                            title: 'Languages', 
-                            interests: ['English', 'French', 'Chinese', 'Spanish', 'Arabic'],
-                          ),
-                          const SizedBox(height: 15),
-                          
-                          // Self-defense Interests
-                          _buildInterestSection(
-                            title: 'Self-defense',
-                            interests: ['Karate', 'Taekwondo', 'Judo', 'Kung Fu', 'Boxing', 'Aikido'],
+
+                          const SizedBox(height: 20),
+
+                          // ملاحظات من الأب
+                          TextFormField(
+                            maxLines: 3,
+                            decoration: const InputDecoration(
+                              labelText: 'Parent Notes (about child personality/interests)',
+                              border: OutlineInputBorder(),
+                            ),
+                            onChanged: (value) => _notes[index] = value,
                           ),
                         ],
                       ),
@@ -103,23 +221,14 @@ class ChildInfoScreen extends StatelessWidget {
                 },
               ),
             ),
-            
+
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                onPressed: () {
-                  _saveAndNavigateToLocation(context);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF80C4C0),
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text(
-                  'Save & Continue to Location',
-                  style: TextStyle(fontSize: 16),
-                ),
+                onPressed: () => _saveAndNavigateToLocation(context),
+                child: const Text('Save & Continue to Location'),
               ),
             ),
           ],
@@ -128,63 +237,22 @@ class ChildInfoScreen extends StatelessWidget {
     );
   }
 
-  // دالة لبناء قسم الاهتمامات
-  Widget _buildInterestSection({required String title, required List<String> interests}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF1F3558),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: interests.map((interest) {
-            return FilterChip(
-              label: Text(interest),
-              selected: false,
-              onSelected: (bool selected) {
-                // هنا يمكن إضافة منطق لحفظ الاهتمامات المختارة
-              },
-              selectedColor: const Color(0xFF80C4C0),
-              checkmarkColor: Colors.white,
-              backgroundColor: Colors.grey[200],
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
   void _saveAndNavigateToLocation(BuildContext context) {
-    // حفظ المعلومات ثم الانتقال لصفحة الموقع
+    // هنا تقدر تحفظ كل البيانات (ID, Gender, Birthday, Interests, Notes)
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Success'),
           content: const Text('Children information and interests have been saved successfully!'),
-          icon: const Icon(
-            Icons.check_circle,
-            color: Colors.green,
-            size: 48,
-          ),
+          icon: const Icon(Icons.check_circle, color: Colors.green, size: 48),
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); // إغلاق الرسالة
-                // الانتقال لصفحة الموقع
+                Navigator.of(context).pop();
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const LocationSelectionScreen(),
-                  ),
+                  MaterialPageRoute(builder: (context) => const LocationSelectionScreen()),
                 );
               },
               child: const Text('Continue to Location'),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'theme.dart'; // استدعاء ملف الثيم
 import 'role_selection_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -16,7 +17,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   void _navigateToNext() async {
-    await Future.delayed(const Duration(seconds: 4));
+    await Future.delayed(const Duration(seconds: 3));
     if (!mounted) return;
     Navigator.pushReplacement(
       context,
@@ -26,13 +27,14 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFCFDF2), // الخلفية #FCFDF2
+      backgroundColor: AppColors.background, // استدعاء من الثيم
       body: Center(
         child: Image.asset(
           'assets/logo.png',
-          width: 200, // تكبير اللوقو
-          height: 200,
+          width: size.width * 0.4, // نسبي للشاشة
         ),
       ),
     );

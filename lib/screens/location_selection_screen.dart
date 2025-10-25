@@ -1,10 +1,10 @@
-// location_selection_screen.dart
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'HomeScreen.dart'; // تأكد من وجود هذا الملف
+import 'theme.dart';
+import 'HomeScreen.dart'; // تأكد أن الملف موجود
 
 class LocationSelectionScreen extends StatefulWidget {
   const LocationSelectionScreen({super.key});
@@ -27,14 +27,10 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
     _requestLocationPermission();
   }
 
-  // طلب صلاحيات الموقع
   Future<void> _requestLocationPermission() async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     final status = await Permission.location.request();
-    
     if (status.isGranted) {
       await _getCurrentLocation();
     } else if (status.isDenied) {
@@ -42,17 +38,12 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
     } else if (status.isPermanentlyDenied) {
       _showPermissionPermanentlyDeniedMessage();
     }
-    
-    setState(() {
-      _isLoading = false;
-    });
+
+    setState(() => _isLoading = false);
   }
 
-  // الحصول على الموقع الحالي
   Future<void> _getCurrentLocation() async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -65,8 +56,8 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
         desiredAccuracy: LocationAccuracy.high,
       );
 
-      // الحصول على اسم الموقع من الإحداثيات
-      String address = await _getAddressFromLatLng(position.latitude, position.longitude);
+      String address =
+          await _getAddressFromLatLng(position.latitude, position.longitude);
 
       setState(() {
         _currentPosition = position;
@@ -76,30 +67,29 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
     } catch (e) {
       _showErrorGettingLocation();
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
   }
 
-  // تحديث العلامة على الخريطة
   void _updateMapMarker() {
     if (_currentPosition != null) {
       setState(() {
         _markers = {
           Marker(
             markerId: const MarkerId('current_location'),
-            position: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+            position: LatLng(
+                _currentPosition!.latitude, _currentPosition!.longitude),
             infoWindow: InfoWindow(
               title: 'Your Location',
-              snippet: '${_currentPosition!.latitude.toStringAsFixed(4)}, ${_currentPosition!.longitude.toStringAsFixed(4)}',
+              snippet:
+                  '${_currentPosition!.latitude.toStringAsFixed(4)}, ${_currentPosition!.longitude.toStringAsFixed(4)}',
             ),
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueRed),
           ),
         };
       });
 
-      // تحريك الكاميرا إلى الموقع
       _mapController?.animateCamera(
         CameraUpdate.newLatLngZoom(
           LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
@@ -109,14 +99,11 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
     }
   }
 
-  // تحويل الإحداثيات إلى عنوان
-  Future<String> _getAddressFromLatLng(double latitude, double longitude) async {
+  Future<String> _getAddressFromLatLng(
+      double latitude, double longitude) async {
     try {
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        latitude, 
-        longitude,
-      );
-      
+      List<Placemark> placemarks =
+          await placemarkFromCoordinates(latitude, longitude);
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks.first;
         return "${place.street ?? ''}, ${place.locality ?? ''}, ${place.administrativeArea ?? ''}";
@@ -130,64 +117,51 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFCFDF2),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Select Location'),
-        backgroundColor: const Color(0xFF80C4C0),
-        foregroundColor: Colors.white,
+        title: const Text('Select Location', style: AppTextStyles.heading),
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.white,
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Choose Your Location',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1F3558),
-              ),
-            ),
+            const Text('Choose Your Location', style: AppTextStyles.heading),
             const SizedBox(height: 20),
-            
-            // Location search input
+
             TextFormField(
               decoration: const InputDecoration(
-                labelText: 'Search Location',
+                labelText: 'Search Location (coming soon)',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.search),
               ),
             ),
             const SizedBox(height: 20),
-            
-            // Current location button
+
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: _isLoading ? null : _getCurrentLocation,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF80C4C0),
-                  foregroundColor: Colors.white,
-                ),
-                icon: _isLoading 
+                icon: _isLoading
                     ? const SizedBox(
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
                       )
                     : const Icon(Icons.my_location),
-                label: _isLoading 
-                    ? const Text('Detecting location...')
-                    : const Text('Use Current Location'),
+                label: Text(
+                  _isLoading ? 'Detecting location...' : 'Use Current Location',
+                ),
               ),
             ),
             const SizedBox(height: 30),
-            
-            // Location information
+
             if (_currentPosition != null) ...[
               Card(
                 color: Colors.white,
@@ -203,27 +177,19 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
                           Text(
                             'Your Current Location',
                             style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
+                                fontSize: 16, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
                       const SizedBox(height: 10),
-                      Text(
-                        _locationName,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey,
-                        ),
-                      ),
+                      Text(_locationName,
+                          style:
+                              const TextStyle(fontSize: 14, color: Colors.grey)),
                       const SizedBox(height: 5),
                       Text(
                         'Coordinates: ${_currentPosition!.latitude.toStringAsFixed(4)}, ${_currentPosition!.longitude.toStringAsFixed(4)}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
+                        style:
+                            const TextStyle(fontSize: 12, color: Colors.grey),
                       ),
                     ],
                   ),
@@ -231,8 +197,7 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
               ),
               const SizedBox(height: 20),
             ],
-            
-            // Map with Google Maps
+
             Container(
               height: 200,
               width: double.infinity,
@@ -252,8 +217,9 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
                   },
                   initialCameraPosition: CameraPosition(
                     target: _currentPosition != null
-                        ? LatLng(_currentPosition!.latitude, _currentPosition!.longitude)
-                        : const LatLng(24.7136, 46.6753), // موقع افتراضي (الرياض)
+                        ? LatLng(_currentPosition!.latitude,
+                            _currentPosition!.longitude)
+                        : const LatLng(24.7136, 46.6753),
                     zoom: _currentPosition != null ? 15.0 : 10.0,
                   ),
                   markers: _markers,
@@ -264,59 +230,37 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
               ),
             ),
             const SizedBox(height: 30),
-            
-            // Confirm location button
+
             SizedBox(
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                onPressed: _currentPosition != null && !_isLoading
-                    ? () {
-                        _confirmLocation();
-                      }
-                    : null,
+                onPressed:
+                    _currentPosition != null && !_isLoading ? _confirmLocation : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _locationConfirmed 
-                      ? Colors.green 
-                      : const Color(0xFF80C4C0),
+                  backgroundColor:
+                      _locationConfirmed ? Colors.green : AppColors.primary,
                   foregroundColor: Colors.white,
                 ),
-                child: _locationConfirmed
-                    ? const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.check_circle, size: 20),
-                          SizedBox(width: 8),
-                          Text(
-                            'Location Confirmed',
-                            style: TextStyle(fontSize: 16),
-                          ),
-                        ],
-                      )
-                    : const Text(
-                        'Confirm Location',
-                        style: TextStyle(fontSize: 16),
-                      ),
+                child: Text(
+                  _locationConfirmed ? 'Location Confirmed' : 'Confirm Location',
+                ),
               ),
             ),
 
-            // Continue to home button
             if (_locationConfirmed) ...[
               const SizedBox(height: 15),
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: () {
-                    _completeRegistrationAndNavigateToHome();
-                  },
+                  onPressed: _completeRegistrationAndNavigateToHome,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                     foregroundColor: Colors.white,
                   ),
                   child: const Text(
                     'Complete Registration & Go to Home',
-                    style: TextStyle(fontSize: 16),
                   ),
                 ),
               ),
@@ -328,13 +272,8 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
   }
 
   void _confirmLocation() {
-    setState(() {
-      _locationConfirmed = true;
-    });
-    
-    // حفظ الإحداثيات في الداتابيس
+    setState(() => _locationConfirmed = true);
     _saveLocationToDatabase();
-    
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Location confirmed successfully'),
@@ -344,19 +283,18 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
   }
 
   void _saveLocationToDatabase() {
-    // حفظ الإحداثيات في الداتابيس
     if (_currentPosition != null) {
-      print('Saving location to database: ${_currentPosition!.latitude}, ${_currentPosition!.longitude}');
-      // هنا تضيف كود حفظ في الداتابيس
-      // Database.saveLocation(_currentPosition!.latitude, _currentPosition!.longitude, _locationName);
+      print(
+          'Saving location to database: ${_currentPosition!.latitude}, ${_currentPosition!.longitude}');
     }
   }
 
   void _completeRegistrationAndNavigateToHome() {
-    // الانتقال مباشرة للصفحة الرئيسية بدون Dialog
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (context) => const HomeScreen(userName: '',)),
+      MaterialPageRoute(
+        builder: (context) => const HomeScreen(userName: ''),
+      ),
       (route) => false,
     );
   }

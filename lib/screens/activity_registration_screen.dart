@@ -17,11 +17,12 @@ class _ActivityRegistrationScreenState extends State<ActivityRegistrationScreen>
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _capacityController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
-  
+
   // Selected values
   int? _selectedDuration;
   final List<String> _selectedAgeRanges = [];
   String? _selectedActivityStatus;
+  String? _selectedActivityType; // ✅ جديد
 
   // Age ranges
   final List<String> _ageRanges = [
@@ -35,6 +36,17 @@ class _ActivityRegistrationScreenState extends State<ActivityRegistrationScreen>
 
   // Duration options (1 to 8 hours)
   final List<int> _durations = [1, 2, 3, 4, 5, 6, 7, 8];
+
+  // Activity types (مرتبطة مع اهتمامات الطفل)
+  final List<String> _activityTypes = [
+    'Sports',
+    'Languages',
+    'Self-defense',
+    'Arts',
+    'Literature & Communication',
+    'Technology',
+    'Clubs & Activities'
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +71,27 @@ class _ActivityRegistrationScreenState extends State<ActivityRegistrationScreen>
                 ),
               ),
               const SizedBox(height: 15),
+
+              // ✅ Activity Type (مهم للتوصية)
+              DropdownButtonFormField<String>(
+                decoration: const InputDecoration(
+                  labelText: 'Activity Type',
+                  border: OutlineInputBorder(),
+                ),
+                value: _selectedActivityType,
+                items: _activityTypes.map((type) {
+                  return DropdownMenuItem(
+                    value: type,
+                    child: Text(type),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedActivityType = value;
+                  });
+                },
+              ),
+              const SizedBox(height: 15),
               
               // Activity Description
               TextFormField(
@@ -72,7 +105,7 @@ class _ActivityRegistrationScreenState extends State<ActivityRegistrationScreen>
               ),
               const SizedBox(height: 15),
 
-              // Start Date with Date Picker
+              // Start Date
               TextFormField(
                 controller: _startDateController,
                 decoration: const InputDecoration(
@@ -81,13 +114,11 @@ class _ActivityRegistrationScreenState extends State<ActivityRegistrationScreen>
                   suffixIcon: Icon(Icons.calendar_today),
                 ),
                 readOnly: true,
-                onTap: () {
-                  _selectStartDate(context);
-                },
+                onTap: () => _selectStartDate(context),
               ),
               const SizedBox(height: 15),
-              
-              // End Date with Date Picker
+
+              // End Date
               TextFormField(
                 controller: _endDateController,
                 decoration: const InputDecoration(
@@ -96,13 +127,11 @@ class _ActivityRegistrationScreenState extends State<ActivityRegistrationScreen>
                   suffixIcon: Icon(Icons.calendar_today),
                 ),
                 readOnly: true,
-                onTap: () {
-                  _selectEndDate(context);
-                },
+                onTap: () => _selectEndDate(context),
               ),
               const SizedBox(height: 15),
 
-              // Duration Dropdown (1-8 hours)
+              // Duration
               DropdownButtonFormField<int>(
                 decoration: const InputDecoration(
                   labelText: 'Duration',
@@ -147,7 +176,7 @@ class _ActivityRegistrationScreenState extends State<ActivityRegistrationScreen>
               ),
               const SizedBox(height: 15),
 
-              // Age Range - Multiple Selection
+              // Age Range
               Container(
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.grey.shade400),
@@ -157,13 +186,7 @@ class _ActivityRegistrationScreenState extends State<ActivityRegistrationScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Age Range *',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.black54,
-                      ),
-                    ),
+                    const Text('Age Range *', style: TextStyle(fontSize: 16, color: Colors.black54)),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8.0,
@@ -191,23 +214,12 @@ class _ActivityRegistrationScreenState extends State<ActivityRegistrationScreen>
                         );
                       }).toList(),
                     ),
-                    if (_selectedAgeRanges.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        'Selected: ${_selectedAgeRanges.join(', ')}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.green,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
               const SizedBox(height: 15),
 
-              // Activity Status Dropdown
+              // Activity Status
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(
                   labelText: 'Activity Status',
@@ -215,18 +227,9 @@ class _ActivityRegistrationScreenState extends State<ActivityRegistrationScreen>
                 ),
                 value: _selectedActivityStatus,
                 items: const [
-                  DropdownMenuItem(
-                    value: 'Active',
-                    child: Text('Active'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'Inactive',
-                    child: Text('Inactive'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'Draft',
-                    child: Text('Draft'),
-                  ),
+                  DropdownMenuItem(value: 'Active', child: Text('Active')),
+                  DropdownMenuItem(value: 'Inactive', child: Text('Inactive')),
+                  DropdownMenuItem(value: 'Draft', child: Text('Draft')),
                 ],
                 onChanged: (value) {
                   setState(() {
@@ -235,15 +238,13 @@ class _ActivityRegistrationScreenState extends State<ActivityRegistrationScreen>
                 },
               ),
               const SizedBox(height: 30),
-              
+
               // Save Activity Button
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: () {
-                    _saveActivity(context);
-                  },
+                  onPressed: () => _saveActivity(context),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF80C4C0),
                   ),
@@ -260,7 +261,6 @@ class _ActivityRegistrationScreenState extends State<ActivityRegistrationScreen>
     );
   }
 
-  // Date Picker for Start Date
   Future<void> _selectStartDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -275,7 +275,6 @@ class _ActivityRegistrationScreenState extends State<ActivityRegistrationScreen>
     }
   }
 
-  // Date Picker for End Date
   Future<void> _selectEndDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -290,25 +289,21 @@ class _ActivityRegistrationScreenState extends State<ActivityRegistrationScreen>
     }
   }
 
-  // Save activity function with confirmation message
   void _saveActivity(BuildContext context) {
-    // Validate required fields
     if (_titleController.text.isEmpty ||
         _selectedDuration == null ||
         _selectedAgeRanges.isEmpty ||
-        _selectedActivityStatus == null) {
+        _selectedActivityStatus == null ||
+        _selectedActivityType == null) { // ✅ تحقق من التايب
       _showMessage(context, 'Error', 'Please fill all required fields', false);
       return;
     }
 
-    // Here you would normally save to database
-    // Simulate saving process
     Future.delayed(const Duration(milliseconds: 500), () {
       _showMessage(context, 'Success', 'Activity information has been saved successfully!', true);
     });
   }
 
-  // Show confirmation message
   void _showMessage(BuildContext context, String title, String message, bool isSuccess) {
     showDialog(
       context: context,
@@ -325,10 +320,7 @@ class _ActivityRegistrationScreenState extends State<ActivityRegistrationScreen>
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                if (isSuccess) {
-                  // Clear form after successful save
-                  _clearForm();
-                }
+                if (isSuccess) _clearForm();
               },
               child: Text(
                 isSuccess ? 'OK' : 'TRY AGAIN',
@@ -344,7 +336,6 @@ class _ActivityRegistrationScreenState extends State<ActivityRegistrationScreen>
     );
   }
 
-  // Clear form after successful save
   void _clearForm() {
     setState(() {
       _titleController.clear();
@@ -356,6 +347,7 @@ class _ActivityRegistrationScreenState extends State<ActivityRegistrationScreen>
       _selectedDuration = null;
       _selectedAgeRanges.clear();
       _selectedActivityStatus = null;
+      _selectedActivityType = null;
     });
   }
 
