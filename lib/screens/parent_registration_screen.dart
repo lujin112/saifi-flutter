@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'theme.dart';
-import 'ChildInfoScreen.dart'; // الملف اللي راح تكمله لاحقاً
+import 'ChildInfoScreen.dart';
 
 class ParentRegistrationScreen extends StatefulWidget {
   const ParentRegistrationScreen({super.key});
 
   @override
-  State<ParentRegistrationScreen> createState() => _ParentRegistrationScreenState();
+  State<ParentRegistrationScreen> createState() =>
+      _ParentRegistrationScreenState();
 }
 
 class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
@@ -47,7 +48,6 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              // الصورة أعلى الفورم
               Image.asset(
                 'assets/parentReg.png',
                 height: 150,
@@ -66,6 +66,7 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
                           child: _buildTextField(
                             controller: _firstNameController,
                             label: 'First Name',
+                            maxLength: 15,
                           ),
                         ),
                         const SizedBox(width: 15),
@@ -73,6 +74,7 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
                           child: _buildTextField(
                             controller: _lastNameController,
                             label: 'Last Name',
+                            maxLength: 15,
                           ),
                         ),
                       ],
@@ -84,7 +86,19 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
                       controller: _idController,
                       label: 'ID',
                       keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(10),
+                      ],
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter ID';
+                        }
+                        if (value.length != 10) {
+                          return 'ID must be exactly 10 digits';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 15),
 
@@ -93,59 +107,95 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
                       controller: _phoneController,
                       label: 'Phone Number',
                       keyboardType: TextInputType.phone,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    ),
-                    const SizedBox(height: 15),
-
-                    // Email with autocomplete
-                    Autocomplete<String>(
-                      optionsBuilder: (TextEditingValue textEditingValue) {
-                        if (textEditingValue.text.contains('@')) {
-                          return const Iterable<String>.empty();
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(10),
+                      ],
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter Phone Number';
                         }
-                        return _emailDomains.where((String domain) {
-                          return domain.contains(textEditingValue.text.toLowerCase());
-                        });
-                      },
-                      onSelected: (String selection) {
-                        final currentText = _emailController.text.split('@').first;
-                        _emailController.text = '$currentText$selection';
-                      },
-                      fieldViewBuilder: (
-                        BuildContext context,
-                        TextEditingController fieldTextEditingController,
-                        FocusNode fieldFocusNode,
-                        VoidCallback onFieldSubmitted,
-                      ) {
-                        _emailController = fieldTextEditingController;
-                        return TextFormField(
-                          controller: fieldTextEditingController,
-                          focusNode: fieldFocusNode,
-                          decoration: const InputDecoration(
-                            labelText: 'Email',
-                            border: OutlineInputBorder(),
-                            hintText: 'username',
-                          ),
-                          keyboardType: TextInputType.emailAddress,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter your email';
-                            }
-                            if (!value.contains('@')) {
-                              return 'Please enter a valid email address';
-                            }
-                            return null;
-                          },
-                        );
+                        if (value.length != 10) {
+                          return 'Phone must be exactly 10 digits';
+                        }
+                        return null;
                       },
                     ),
                     const SizedBox(height: 15),
 
-                    // Password
-                    _buildTextField(
+                    // Email with validation of domain
+                    TextFormField(
+                      controller: _emailController,
+                      decoration: const InputDecoration(
+                        labelText: 'Email',
+                        border: OutlineInputBorder(),
+                        hintText: 'username@example.com',
+                      ),
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your email';
+                        }
+                        if (!_emailDomains
+                            .any((domain) => value.endsWith(domain))) {
+                          return 'Email must end with ${_emailDomains.join(", ")}';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 15),
+
+                    // Password with rules icon
+                    TextFormField(
                       controller: _passwordController,
-                      label: 'Password',
                       obscureText: true,
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.info_outline,
+                              color: AppColors.primary),
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Password Requirements'),
+                                content: const Text(
+                                  '- At least 8 characters\n'
+                                  '- At least 1 uppercase letter\n'
+                                  '- At least 1 lowercase letter\n'
+                                  '- At least 1 number',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('OK'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter Password';
+                        }
+                        if (value.length < 8) {
+                          return 'Password must be at least 8 characters';
+                        }
+                        if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                          return 'Password must contain an uppercase letter';
+                        }
+                        if (!RegExp(r'[a-z]').hasMatch(value)) {
+                          return 'Password must contain a lowercase letter';
+                        }
+                        if (!RegExp(r'[0-9]').hasMatch(value)) {
+                          return 'Password must contain a number';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 30),
 
@@ -171,9 +221,16 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
                         return Card(
                           margin: const EdgeInsets.symmetric(vertical: 5),
                           child: ListTile(
-                            leading: const Icon(Icons.child_care),
-                            title: Text('${child['firstName']} ${child['lastName']}'),
-                            subtitle: Text('Age: ${child['age']}'),
+                            leading: Icon(
+                              Icons.child_care, // الأيقونة الأصلية
+                              color: child['gender'] == 'Female'
+                                  ? Colors.pinkAccent
+                                  : AppColors.primary,
+                              size: 32,
+                            ),
+                            title: Text(
+                                '${child['firstName']} ${child['lastName']}'),
+                            subtitle: Text('Gender: ${child['gender']}'),
                             trailing: IconButton(
                               icon: const Icon(Icons.delete, color: Colors.red),
                               onPressed: () {
@@ -225,39 +282,49 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
     );
   }
 
-  // Custom text field using theme
+  // Custom text field with validator
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
     TextInputType keyboardType = TextInputType.text,
     List<TextInputFormatter>? inputFormatters,
     bool obscureText = false,
+    int? maxLength,
+    String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
       obscureText: obscureText,
+      maxLength: maxLength,
       decoration: InputDecoration(
         labelText: label,
+        counterText: "", // يخفي العداد
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
         fillColor: AppColors.white,
       ),
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Please enter $label';
-        }
-        return null;
-      },
+      validator: validator ??
+          (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please enter $label';
+            }
+            if (maxLength != null && value.length > maxLength) {
+              return '$label cannot exceed $maxLength characters';
+            }
+            return null;
+          },
     );
   }
 
-  // Dialogs as في كودك السابق
+  // Dialog for adding child
   void _showAddChildDialog() {
-    final TextEditingController childFirstNameController = TextEditingController();
-    final TextEditingController childLastNameController = TextEditingController();
-    final TextEditingController childAgeController = TextEditingController();
+    final TextEditingController childFirstNameController =
+        TextEditingController();
+    final TextEditingController childLastNameController =
+        TextEditingController();
+    String? selectedGender;
 
     showDialog(
       context: context,
@@ -267,15 +334,39 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
           content: SingleChildScrollView(
             child: Column(
               children: [
-                _buildTextField(controller: childFirstNameController, label: 'Child First Name'),
-                const SizedBox(height: 15),
-                _buildTextField(controller: childLastNameController, label: 'Child Last Name'),
+                _buildTextField(
+                    controller: childFirstNameController,
+                    label: 'Child First Name',
+                    maxLength: 15),
                 const SizedBox(height: 15),
                 _buildTextField(
-                  controller: childAgeController,
-                  label: 'Child Age',
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    controller: childLastNameController,
+                    label: 'Child Last Name',
+                    maxLength: 15),
+                const SizedBox(height: 15),
+
+                // Gender dropdown
+                DropdownButtonFormField<String>(
+                  value: selectedGender,
+                  decoration: const InputDecoration(
+                    labelText: 'Gender',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'Male',
+                      child: Text('Male'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Female',
+                      child: Text('Female'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    selectedGender = value;
+                  },
+                  validator: (value) =>
+                      value == null ? 'Please select gender' : null,
                 ),
               ],
             ),
@@ -289,16 +380,17 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
               onPressed: () {
                 if (childFirstNameController.text.isNotEmpty &&
                     childLastNameController.text.isNotEmpty &&
-                    childAgeController.text.isNotEmpty) {
+                    selectedGender != null) {
                   setState(() {
                     _children.add({
                       'firstName': childFirstNameController.text,
                       'lastName': childLastNameController.text,
-                      'age': childAgeController.text,
+                      'gender': selectedGender,
                     });
                   });
                   Navigator.of(context).pop();
-                  _showConfirmationMessage(context, 'Child added successfully!');
+                  _showConfirmationMessage(
+                      context, 'Child added successfully!');
                 } else {
                   _showMessage(context, 'Error', 'Please fill all fields');
                 }
