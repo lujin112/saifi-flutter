@@ -9,12 +9,38 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
   bool _isLoading = false;
+
+  late AnimationController _iconController;
+  late Animation<double> _pulseAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _iconController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat(reverse: true);
+
+    _pulseAnimation = Tween<double>(begin: 0.9, end: 1.1).animate(
+      CurvedAnimation(parent: _iconController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _iconController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   void _login() async {
     if (!_formKey.currentState!.validate()) return;
@@ -51,6 +77,17 @@ class _LoginScreenState extends State<LoginScreen> {
           key: _formKey,
           child: Column(
             children: [
+              // أيقونة متحركة
+              ScaleTransition(
+                scale: _pulseAnimation,
+                child: const Icon(
+                  Icons.lock_outline,
+                  size: 80,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(height: 30),
+
               TextFormField(
                 controller: _emailController,
                 decoration: const InputDecoration(

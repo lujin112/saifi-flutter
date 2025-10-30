@@ -1,5 +1,5 @@
-// chatbot_screen.dart
 import 'package:flutter/material.dart';
+import 'dialogflow_service.dart';
 
 class ChatbotScreen extends StatefulWidget {
   const ChatbotScreen({super.key});
@@ -11,22 +11,23 @@ class ChatbotScreen extends StatefulWidget {
 class _ChatbotScreenState extends State<ChatbotScreen> {
   final TextEditingController _controller = TextEditingController();
   final List<Map<String, String>> _messages = [];
+  final DialogflowService _dialogflow = DialogflowService();
 
-  void _sendMessage() {
+  void _sendMessage() async {
     if (_controller.text.trim().isEmpty) return;
-
-    setState(() {
-      _messages.add({"role": "user", "text": _controller.text.trim()});
-    });
 
     String userMessage = _controller.text.trim();
     _controller.clear();
 
-    // هنا ممكن لاحقاً نستبدل بالـ API ونجيب رد فعلي
-    Future.delayed(const Duration(milliseconds: 500), () {
-      setState(() {
-        _messages.add({"role": "bot", "text": "Bot reply to: $userMessage"});
-      });
+    setState(() {
+      _messages.add({"role": "user", "text": userMessage});
+    });
+
+    // إرسال الرسالة إلى Dialogflow
+    final botReply = await _dialogflow.sendMessage(userMessage);
+
+    setState(() {
+      _messages.add({"role": "bot", "text": botReply});
     });
   }
 
@@ -93,6 +94,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                           borderSide: BorderSide.none,
                         ),
                       ),
+                      onSubmitted: (_) => _sendMessage(),
                     ),
                   ),
                   const SizedBox(width: 8),

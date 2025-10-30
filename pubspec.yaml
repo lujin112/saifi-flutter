@@ -1,7 +1,7 @@
 name: saifi_app
-description: A new Flutter project.
+description: Saifi summer activities app
 
-publish_to: 'none'
+publish_to: 'none' # ما رح تنشره على pub.dev
 
 version: 1.0.0+1
 
@@ -11,16 +11,29 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
+  # أيقونات
   cupertino_icons: ^1.0.2
-  geolocator: ^11.0.0
-  geocoding: ^2.1.1
+
+  # الخرائط والموقع
+  geolocator: ^14.0.2
+  geocoding: ^4.0.0
+
   google_maps_flutter: ^2.2.3
-  permission_handler: ^11.0.0
+  permission_handler: ^12.0.1
+
+  # أنيميشن (اللوتي)
+  lottie: ^3.1.2
+
+  # لربط البوت (Dialogflow)
+  http: ^1.2.0
+  googleapis_auth: ^2.0.0
+
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^2.0.0
+  flutter_lints: ^6.0.0
 
 flutter:
   uses-material-design: true
@@ -29,3 +42,4 @@ flutter:
     - assets/
     - assets/logo.png
     - assets/home.png
+    - assets/saifibot.json   # ملف JSON اللي حملتيه من Google Cloud
