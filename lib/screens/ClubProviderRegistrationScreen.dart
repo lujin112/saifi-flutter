@@ -101,13 +101,7 @@ class _ClubProviderRegistrationScreenState
   void _register() {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_currentPosition == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select your location")),
-      );
-      return;
-    }
-
+    // حذفنا التحقق الإجباري للموقع
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -243,11 +237,11 @@ class _ClubProviderRegistrationScreenState
                 ),
                 const SizedBox(height: 15),
 
-                // CRN
+                // CRN (optional now)
                 TextFormField(
                   controller: _crnController,
                   decoration: const InputDecoration(
-                    labelText: 'Commercial Registration Number',
+                    labelText: 'Commercial Registration Number (optional)',
                     border: OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.number,
@@ -256,11 +250,8 @@ class _ClubProviderRegistrationScreenState
                     LengthLimitingTextInputFormatter(10)
                   ],
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter CRN';
-                    }
-                    if (value.length != 10) {
-                      return 'CRN must be exactly 10 digits';
+                    if (value != null && value.isNotEmpty && value.length != 10) {
+                      return 'CRN must be exactly 10 digits if provided';
                     }
                     return null;
                   },

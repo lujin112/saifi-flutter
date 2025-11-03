@@ -38,8 +38,14 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  fonts:
+    - family: RobotoMono
+      fonts:
+        - asset: assets\font\RobotoMono-VariableFont_wght.ttf
+
   assets:
-    - assets/
     - assets/logo.png
     - assets/home.png
-    - assets/saifibot.json   # ملف JSON اللي حملتيه من Google Cloud
+    - assets/parentReg.png
+    - assets/saifibot.json
+

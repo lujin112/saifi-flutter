@@ -41,220 +41,244 @@ class _ChildInfoScreenState extends State<ChildInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Child Information', style: AppTextStyles.heading),
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.white,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Children Information & Interests',
-              style: AppTextStyles.heading,
+    return ThemedBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: const Text(
+            'Child Information',
+            style: TextStyle(
+              fontFamily: 'RobotoMono',
+              fontWeight: FontWeight.w600,
             ),
-            const SizedBox(height: 20),
+          ),
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Children Information & Interests',
+                style: TextStyle(
+                  fontFamily: 'RobotoMono',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textDark,
+                ),
+              ),
+              const SizedBox(height: 20),
 
-            Expanded(
-              child: ListView.builder(
-                itemCount: widget.children.length,
-                itemBuilder: (context, index) {
-                  final child = widget.children[index];
-                  _selectedInterests.putIfAbsent(index, () => {});
-                  _birthdays.putIfAbsent(index, () => "");
-                  _ids.putIfAbsent(index, () => "");
-                  _notes.putIfAbsent(index, () => "");
-                  _selectedCategories.putIfAbsent(index, () => {});
+              Expanded(
+                child: ListView.builder(
+                  itemCount: widget.children.length,
+                  itemBuilder: (context, index) {
+                    final child = widget.children[index];
+                    _selectedInterests.putIfAbsent(index, () => {});
+                    _birthdays.putIfAbsent(index, () => "");
+                    _ids.putIfAbsent(index, () => "");
+                    _notes.putIfAbsent(index, () => "");
+                    _selectedCategories.putIfAbsent(index, () => {});
 
-                  int? age;
-                  if (_birthdays[index] != "") {
-                    final parts = _birthdays[index]!.split("/");
-                    if (parts.length == 3) {
-                      final birthDate = DateTime(
-                        int.parse(parts[2]),
-                        int.parse(parts[1]),
-                        int.parse(parts[0]),
-                      );
-                      age = _calculateAge(birthDate);
+                    int? age;
+                    if (_birthdays[index] != "") {
+                      final parts = _birthdays[index]!.split("/");
+                      if (parts.length == 3) {
+                        final birthDate = DateTime(
+                          int.parse(parts[2]),
+                          int.parse(parts[1]),
+                          int.parse(parts[0]),
+                        );
+                        age = _calculateAge(birthDate);
+                      }
                     }
-                  }
 
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 15),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // الاسم + الجنس
-                          Row(
-                            children: [
-                              const Icon(Icons.child_care, color: AppColors.primary),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  '${child['firstName']} ${child['lastName']}  (${child['gender']})',
-                                  style: AppTextStyles.body,
+                    return Card(
+                      elevation: 4,
+                      shadowColor: AppColors.primary.withOpacity(0.3),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      margin: const EdgeInsets.only(bottom: 18),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.child_care, color: AppColors.primary, size: 28),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    '${child['firstName']} ${child['lastName']} (${child['gender']})',
+                                    style: const TextStyle(
+                                      fontFamily: 'RobotoMono',
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.textDark,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+
+                            if (age != null)
+                              Text(
+                                'Age: $age years',
+                                style: const TextStyle(
+                                  fontFamily: 'RobotoMono',
+                                  fontSize: 14,
+                                  color: Colors.grey,
                                 ),
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
+                            const SizedBox(height: 15),
 
-                          // العمر المحسوب
-                          if (age != null)
-                            Text(
-                              'Age: $age years',
-                              style: const TextStyle(fontSize: 16, color: Colors.grey),
+                            TextFormField(
+                              readOnly: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Birthday',
+                                prefixIcon: Icon(Icons.cake, color: AppColors.primary),
+                              ),
+                              onTap: () async {
+                                final pickedDate = await showDatePicker(
+                                  context: context,
+                                  initialDate: DateTime(2010),
+                                  firstDate: DateTime(2007),
+                                  lastDate: DateTime.now(),
+                                );
+                                if (pickedDate != null) {
+                                  setState(() {
+                                    _birthdays[index] =
+                                        "${pickedDate.day}/${pickedDate.month}/${pickedDate.year}";
+                                  });
+                                }
+                              },
+                              controller: TextEditingController(text: _birthdays[index]),
                             ),
-                          const SizedBox(height: 15),
+                            const SizedBox(height: 15),
 
-                          // Birthday Picker
-                          TextFormField(
-                            readOnly: true,
-                            decoration: const InputDecoration(
-                              labelText: 'Birthday',
-                              border: OutlineInputBorder(),
+                            TextFormField(
+                              decoration: const InputDecoration(
+                                labelText: 'Child ID',
+                                prefixIcon: Icon(Icons.badge_outlined, color: AppColors.primary),
+                              ),
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              onChanged: (value) => _ids[index] = value,
                             ),
-                            onTap: () async {
-                              final pickedDate = await showDatePicker(
-                                context: context,
-                                initialDate: DateTime(2010),
-                                firstDate: DateTime(2007),
-                                lastDate: DateTime.now(),
-                              );
-                              if (pickedDate != null) {
-                                setState(() {
-                                  _birthdays[index] =
-                                      "${pickedDate.day}/${pickedDate.month}/${pickedDate.year}";
-                                });
-                              }
-                            },
-                            controller: TextEditingController(text: _birthdays[index]),
-                          ),
-                          const SizedBox(height: 15),
+                            const SizedBox(height: 20),
 
-                          // Child ID
-                          TextFormField(
-                            decoration: const InputDecoration(
-                              labelText: 'Child ID',
-                              border: OutlineInputBorder(),
+                            const Text(
+                              "Select Interest Categories:",
+                              style: TextStyle(
+                                fontFamily: 'RobotoMono',
+                                fontWeight: FontWeight.w500,
+                                fontSize: 15,
+                                color: AppColors.textDark,
+                              ),
                             ),
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                            onChanged: (value) => _ids[index] = value,
-                          ),
-                          const SizedBox(height: 20),
+                            const SizedBox(height: 10),
 
-                          // اختيار الكاتيجوري
-                          const Text("Select Interest Categories:", style: AppTextStyles.body),
-                          const SizedBox(height: 10),
-
-                          Column(
-                            children: _interestsMap.keys.map((category) {
-                              final isCategorySelected =
-                                  _selectedCategories[index]!.contains(category);
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  CheckboxListTile(
-                                    title: Text(category),
-                                    value: isCategorySelected,
-                                    onChanged: (bool? selected) {
-                                      setState(() {
-                                        if (selected == true) {
-                                          _selectedCategories[index]!.add(category);
-                                        } else {
-                                          _selectedCategories[index]!.remove(category);
-                                          _selectedInterests[index]!.removeWhere(
-                                            (interest) =>
-                                                _interestsMap[category]!.contains(interest),
-                                          );
-                                        }
-                                      });
-                                    },
-                                  ),
-
-                                  // إذا اختار الكاتيجوري، نعرض اهتماماته
-                                  if (isCategorySelected) ...[
-                                    Wrap(
-                                      spacing: 8,
-                                      runSpacing: 8,
-                                      children: _interestsMap[category]!.map((interest) {
-                                        final isSelected =
-                                            _selectedInterests[index]!.contains(interest);
-                                        return FilterChip(
-                                          label: Text(interest),
-                                          selected: isSelected,
-                                          onSelected: (bool selected) {
-                                            setState(() {
-                                              if (selected) {
-                                                _selectedInterests[index]!.add(interest);
-                                              } else {
-                                                _selectedInterests[index]!.remove(interest);
-                                              }
-                                            });
-                                          },
-                                          selectedColor: AppColors.primary,
-                                          checkmarkColor: Colors.white,
-                                          backgroundColor: Colors.grey[200],
-                                        );
-                                      }).toList(),
+                            Column(
+                              children: _interestsMap.keys.map((category) {
+                                final isCategorySelected = _selectedCategories[index]!.contains(category);
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    CheckboxListTile(
+                                      title: Text(
+                                        category,
+                                        style: const TextStyle(fontFamily: 'RobotoMono'),
+                                      ),
+                                      value: isCategorySelected,
+                                      activeColor: AppColors.primary,
+                                      onChanged: (bool? selected) {
+                                        setState(() {
+                                          if (selected == true) {
+                                            _selectedCategories[index]!.add(category);
+                                          } else {
+                                            _selectedCategories[index]!.remove(category);
+                                            _selectedInterests[index]!.removeWhere(
+                                              (interest) =>
+                                                  _interestsMap[category]!.contains(interest),
+                                            );
+                                          }
+                                        });
+                                      },
                                     ),
-                                    const SizedBox(height: 15),
+
+                                    if (isCategorySelected)
+                                      Wrap(
+                                        spacing: 8,
+                                        runSpacing: 8,
+                                        children: _interestsMap[category]!.map((interest) {
+                                          final isSelected = _selectedInterests[index]!.contains(interest);
+                                          return FilterChip(
+                                            label: Text(interest),
+                                            selected: isSelected,
+                                            onSelected: (bool selected) {
+                                              setState(() {
+                                                if (selected) {
+                                                  _selectedInterests[index]!.add(interest);
+                                                } else {
+                                                  _selectedInterests[index]!.remove(interest);
+                                                }
+                                              });
+                                            },
+                                            selectedColor: AppColors.primary,
+                                            backgroundColor: Colors.grey[200],
+                                            checkmarkColor: Colors.white,
+                                          );
+                                        }).toList(),
+                                      ),
                                   ],
-                                ],
-                              );
-                            }).toList(),
-                          ),
-
-                          const SizedBox(height: 20),
-
-                          // ملاحظات من الأب
-                          TextFormField(
-                            maxLines: 3,
-                            decoration: const InputDecoration(
-                              labelText: 'Parent Notes (about child personality/interests)',
-                              border: OutlineInputBorder(),
+                                );
+                              }).toList(),
                             ),
-                            onChanged: (value) => _notes[index] = value,
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
 
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: () => _saveAndNavigateToLocation(context),
-                child: const Text('Save & Continue to Location'),
+                            const SizedBox(height: 20),
+                            TextFormField(
+                              maxLines: 3,
+                              decoration: const InputDecoration(
+                                labelText: 'Parent Notes (about child personality/interests)',
+                                prefixIcon: Icon(Icons.note_alt_outlined, color: AppColors.primary),
+                              ),
+                              onChanged: (value) => _notes[index] = value,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+
+              const SizedBox(height: 20),
+              ShinyButton(
+                text: "Save & Continue to Location",
+                onPressed: () => _saveAndNavigateToLocation(context),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   void _saveAndNavigateToLocation(BuildContext context) {
-    // هنا تقدر تحفظ كل البيانات (ID, Gender, Birthday, Interests, Notes)
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Success'),
+          title: const Text('Success', style: TextStyle(fontFamily: 'RobotoMono')),
           content: const Text(
-              'Children information and interests have been saved successfully!'),
+            'Children information and interests have been saved successfully!',
+            style: TextStyle(fontFamily: 'RobotoMono'),
+          ),
           icon: const Icon(Icons.check_circle, color: Colors.green, size: 48),
           actions: [
             TextButton(
@@ -262,11 +286,13 @@ class _ChildInfoScreenState extends State<ChildInfoScreen> {
                 Navigator.of(context).pop();
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                      builder: (context) => const LocationSelectionScreen()),
+                  MaterialPageRoute(builder: (context) => const LocationSelectionScreen()),
                 );
               },
-              child: const Text('Continue to Location'),
+              child: const Text(
+                'Continue to Location',
+                style: TextStyle(fontFamily: 'RobotoMono'),
+              ),
             ),
           ],
         );

@@ -47,12 +47,10 @@ class _LoginScreenState extends State<LoginScreen>
 
     setState(() => _isLoading = true);
 
-    // هنا تحط تحققك الفعلي من الداتابيس أو Firebase
-    await Future.delayed(const Duration(seconds: 2));
+    await Future.delayed(const Duration(seconds: 2)); // محاكاة تسجيل الدخول
 
     setState(() => _isLoading = false);
 
-    // انتقال للهوم بعد التحقق
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(
@@ -71,53 +69,141 @@ class _LoginScreenState extends State<LoginScreen>
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Form(
           key: _formKey,
           child: Column(
             children: [
+              const SizedBox(height: 40),
+
               // أيقونة متحركة
               ScaleTransition(
                 scale: _pulseAnimation,
                 child: const Icon(
                   Icons.lock_outline,
-                  size: 80,
+                  size: 90,
                   color: AppColors.primary,
                 ),
               ),
-              const SizedBox(height: 30),
 
+              const SizedBox(height: 20),
+
+              Text(
+                "Welcome back to Saifi",
+                style: TextStyle(
+                  fontFamily: 'RobotoMono',
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textDark,
+                ),
+              ),
+
+              const SizedBox(height: 10),
+              Text(
+                "Sign in to continue",
+                style: TextStyle(
+                  fontFamily: 'RobotoMono',
+                  fontSize: 14,
+                  color: AppColors.textDark.withOpacity(0.6),
+                ),
+              ),
+
+              const SizedBox(height: 40),
+
+              // حقل الإيميل
               TextFormField(
                 controller: _emailController,
                 decoration: const InputDecoration(
                   labelText: 'Email',
                   border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.email_outlined),
                 ),
                 validator: (value) =>
                     value!.isEmpty ? 'Please enter your email' : null,
               ),
               const SizedBox(height: 20),
+
+              // حقل الباسوورد
               TextFormField(
                 controller: _passwordController,
                 obscureText: true,
                 decoration: const InputDecoration(
                   labelText: 'Password',
                   border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.lock_outline),
                 ),
                 validator: (value) =>
                     value!.isEmpty ? 'Please enter your password' : null,
               ),
+
               const SizedBox(height: 30),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _login,
-                  child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Login'),
+
+              // الزر الجميل بدون null
+              GestureDetector(
+                onTap: _isLoading ? null : _login,
+                child: AbsorbPointer(
+                  absorbing: _isLoading, // يمنع الضغط أثناء التحميل
+                  child: Container(
+                    width: double.infinity,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColors.primary.withOpacity(0.95),
+                          AppColors.primary.withOpacity(0.75),
+                        ],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: _isLoading
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : Text(
+                              "Login",
+                              style: TextStyle(
+                                fontFamily: 'RobotoMono',
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                    ),
+                  ),
                 ),
+              ),
+
+              const SizedBox(height: 25),
+
+              // رابط التسجيل
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    "Don’t have an account? ",
+                    style: TextStyle(fontFamily: 'RobotoMono'),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      // روح لصفحة التسجيل
+                    },
+                    child: const Text(
+                      "Sign up",
+                      style: TextStyle(
+                        fontFamily: 'RobotoMono',
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

@@ -1,7 +1,7 @@
-// home_screen.dart
 import 'package:flutter/material.dart';
-import 'role_selection_screen.dart'; // عشان نرجع لصفحة اختيار الدور
-import 'chatbot_screen.dart';        // صفحة التشات بوت
+import 'role_selection_screen.dart';
+import 'chatbot_screen.dart';
+import 'theme.dart';
 
 class HomeScreen extends StatefulWidget {
   final String userName;
@@ -14,7 +14,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
-  bool _isArabic = false; // للتحكم باللغة
+  bool _isArabic = false;
 
   late List<Widget> _pages;
 
@@ -22,124 +22,135 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _pages = [
-      const HomePage(),
-      const ChatbotScreen(), // نستدعي من الملف الجديد
+      HomePage(userName: widget.userName),
+      const ChatbotScreen(),
       const ProfilePage(),
     ];
   }
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: _isArabic ? TextDirection.rtl : TextDirection.ltr,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            'Saifi',
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1F3558),
-            ),
-          ),
-          centerTitle: true,
-          backgroundColor: const Color(0xFFFCFDF2),
-          elevation: 0,
-          leading: Builder(
-            builder: (context) => IconButton(
-              icon: const Icon(Icons.menu, color: Color(0xFF1F3558), size: 30),
-              onPressed: () => Scaffold.of(context).openDrawer(),
-            ),
-          ),
-          actions: [
-            IconButton(
-              icon: const Icon(
-                Icons.notifications_none,
-                color: Color(0xFF1F3558),
-                size: 28,
+    return ThemedBackground(
+      child: Directionality(
+        textDirection: _isArabic ? TextDirection.rtl : TextDirection.ltr,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            title: Text(
+              'Saifi',
+              style: const TextStyle(
+                fontFamily: 'RobotoMono',
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textDark,
               ),
-              onPressed: () {},
             ),
-          ],
-        ),
-        backgroundColor: const Color(0xFFFCFDF2),
-        drawer: Drawer(
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              const DrawerHeader(
-                decoration: BoxDecoration(color: Color(0xFF80C4C0)),
-                child: Text(
-                  'Saifi Menu',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold),
+            centerTitle: true,
+            leading: Builder(
+              builder: (context) => IconButton(
+                icon: const Icon(Icons.menu, color: AppColors.textDark, size: 30),
+                onPressed: () => Scaffold.of(context).openDrawer(),
+              ),
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.notifications_none,
+                    color: AppColors.textDark, size: 28),
+                onPressed: () {},
+              ),
+            ],
+          ),
+          drawer: Drawer(
+            backgroundColor: AppColors.background,
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                const DrawerHeader(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [AppColors.primary, Color(0xFF64AFAA)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  child: Align(
+                    alignment: Alignment.bottomLeft,
+                    child: Text(
+                      'Saifi Menu',
+                      style: TextStyle(
+                        fontFamily: 'RobotoMono',
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-              SwitchListTile(
-                title: const Text("العربية"),
-                value: _isArabic,
-                onChanged: (val) {
-                  setState(() {
-                    _isArabic = val;
-                  });
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.logout),
-                title: const Text('Log out'),
-                onTap: () {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const RoleSelectionScreen()),
-                    (route) => false,
-                  );
-                },
-              ),
-            ],
+                SwitchListTile(
+                  title: const Text("العربية",
+                      style: TextStyle(fontFamily: 'RobotoMono')),
+                  value: _isArabic,
+                  onChanged: (val) => setState(() => _isArabic = val),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.logout, color: AppColors.primary),
+                  title: const Text('Log out',
+                      style: TextStyle(fontFamily: 'RobotoMono')),
+                  onTap: () {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const RoleSelectionScreen()),
+                      (route) => false,
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
-        ),
-        body: _pages[_currentIndex],
-        bottomNavigationBar: Container(
-          decoration: BoxDecoration(
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.3),
-                blurRadius: 10,
-                offset: const Offset(0, -2),
+          body: _pages[_currentIndex],
+          bottomNavigationBar: Container(
+            decoration: BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withOpacity(0.2),
+                  blurRadius: 8,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: BottomNavigationBar(
+              currentIndex: _currentIndex,
+              onTap: (index) => setState(() => _currentIndex = index),
+              backgroundColor: Colors.white,
+              selectedItemColor: AppColors.primary,
+              unselectedItemColor: Colors.grey,
+              selectedLabelStyle: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontFamily: 'RobotoMono',
               ),
-            ],
-          ),
-          child: BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: (index) {
-              setState(() {
-                _currentIndex = index;
-              });
-            },
-            backgroundColor: Colors.white,
-            selectedItemColor: const Color(0xFF80C4C0),
-            unselectedItemColor: Colors.grey,
-            selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.home_outlined),
-                activeIcon: Icon(Icons.home),
-                label: 'Home',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.chat_outlined),
-                activeIcon: Icon(Icons.chat),
-                label: 'Chatbot',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.person_outlined),
-                activeIcon: Icon(Icons.person),
-                label: 'Profile',
-              ),
-            ],
+              unselectedLabelStyle:
+                  const TextStyle(fontFamily: 'RobotoMono', fontSize: 12),
+              items: const [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.home_outlined),
+                  activeIcon: Icon(Icons.home),
+                  label: 'Home',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.chat_outlined),
+                  activeIcon: Icon(Icons.chat),
+                  label: 'Chatbot',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.person_outlined),
+                  activeIcon: Icon(Icons.person),
+                  label: 'Profile',
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -147,9 +158,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// صفحة الهوم الرئيسية (ما غيرت أي شي)
+// ======================== HOME PAGE ===========================
 class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+  final String userName;
+
+  const HomePage({super.key, required this.userName});
 
   @override
   Widget build(BuildContext context) {
@@ -158,18 +171,19 @@ class HomePage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildWelcomeSection(),
+          _buildWelcomeSection(userName),
           const SizedBox(height: 30),
           _buildSearchCard(),
           const SizedBox(height: 30),
           _buildRecommendationsSection(),
-          const SizedBox(height: 20),
+          const SizedBox(height: 30),
           const Text(
             'Suggested Activities',
             style: TextStyle(
-              fontSize: 22,
+              fontFamily: 'RobotoMono',
+              fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF1F3558),
+              color: AppColors.textDark,
             ),
           ),
           const SizedBox(height: 20),
@@ -179,41 +193,42 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildWelcomeSection() {
+  Widget _buildWelcomeSection(String name) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Hello, Mohammed! 👋',
-          style: TextStyle(
-            fontSize: 28,
+          'Hello, $name 👋',
+          style: const TextStyle(
+            fontFamily: 'RobotoMono',
+            fontSize: 26,
             fontWeight: FontWeight.bold,
-            color: const Color(0xFF1F3558),
-            height: 1.2,
+            color: AppColors.textDark,
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFFE8F4F3),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: const Color(0xFF80C4C0).withOpacity(0.3),
+            gradient: LinearGradient(
+              colors: [AppColors.primary.withOpacity(0.15), Colors.white],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.primary.withOpacity(0.2)),
           ),
           child: Row(
-            children: [
-              const Icon(Icons.auto_awesome,
-                  color: Color(0xFF80C4C0), size: 24),
-              const SizedBox(width: 12),
+            children: const [
+              Icon(Icons.auto_awesome, color: AppColors.primary, size: 24),
+              SizedBox(width: 10),
               Expanded(
                 child: Text(
                   "I've handpicked these recommendations just for you! ✨",
                   style: TextStyle(
-                    fontSize: 16,
-                    color: const Color(0xFF1F3558),
-                    fontWeight: FontWeight.w500,
+                    fontFamily: 'RobotoMono',
+                    fontSize: 15,
+                    color: AppColors.textDark,
                   ),
                 ),
               ),
@@ -226,18 +241,22 @@ class HomePage extends StatelessWidget {
 
   Widget _buildSearchCard() {
     return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            const Icon(Icons.search, color: Color(0xFF80C4C0), size: 30),
-            const SizedBox(width: 15),
+            const Icon(Icons.search, color: AppColors.primary, size: 28),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 'Search activities...',
-                style: TextStyle(fontSize: 16, color: Colors.grey[500]),
+                style: TextStyle(
+                  fontFamily: 'RobotoMono',
+                  fontSize: 15,
+                  color: Colors.grey[600],
+                ),
               ),
             ),
           ],
@@ -247,83 +266,83 @@ class HomePage extends StatelessWidget {
   }
 
   Widget _buildRecommendationsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Personalized For You',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF1F3558),
-          ),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primary.withOpacity(0.15),
+            Colors.white.withOpacity(0.9)
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        const SizedBox(height: 15),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                const Color(0xFF80C4C0).withOpacity(0.1),
-                const Color(0xFF1F3558).withOpacity(0.05),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: const Color(0xFF80C4C0).withOpacity(0.2),
-            ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.1),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const [
+          Row(
             children: [
-              const Row(
-                children: [
-                  Icon(Icons.star, color: Color(0xFFFFD700), size: 20),
-                  SizedBox(width: 8),
-                  Text(
-                    'Perfect matches for your family',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1F3558),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
+              Icon(Icons.star, color: Colors.amber, size: 22),
+              SizedBox(width: 8),
               Text(
-                "Based on your location and preferences, I've found activities that your children will love! 🎯",
+                'Perfect matches for your family',
                 style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[700],
-                  height: 1.4,
+                  fontFamily: 'RobotoMono',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textDark,
                 ),
               ),
             ],
           ),
-        ),
-      ],
+          SizedBox(height: 8),
+          Text(
+            "Based on your preferences, I’ve found activities that your children will love! 🎯",
+            style: TextStyle(
+              fontFamily: 'RobotoMono',
+              fontSize: 14,
+              color: Colors.grey,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildActivitiesList() {
+    final activities = [
+      {'title': 'Football', 'icon': Icons.sports_soccer, 'age': 'Ages 6-12', 'details': 'Near you • 2km'},
+      {'title': 'Swimming', 'icon': Icons.pool, 'age': 'Ages 5-10', 'details': 'Popular • 5km'},
+      {'title': 'Art Class', 'icon': Icons.brush, 'age': 'Ages 4-8', 'details': 'Creative • 3km'},
+      {'title': 'Music', 'icon': Icons.music_note, 'age': 'Ages 7-14', 'details': 'New • 4km'},
+    ];
+
     return SizedBox(
-      height: 200,
-      child: ListView(
+      height: 210,
+      child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        children: [
-          _buildActivityCard('Football', Icons.sports_soccer, 'Ages 6-12',
-              'Near you • 2km'),
-          _buildActivityCard(
-              'Swimming', Icons.pool, 'Ages 5-10', 'Popular • 5km'),
-          _buildActivityCard(
-              'Art Class', Icons.brush, 'Ages 4-8', 'Creative • 3km'),
-          _buildActivityCard(
-              'Music', Icons.music_note, 'Ages 7-14', 'New • 4km'),
-        ],
+        itemCount: activities.length,
+        itemBuilder: (context, i) {
+          final act = activities[i];
+          return _buildActivityCard(
+            act['title'] as String,
+            act['icon'] as IconData,
+            act['age'] as String,
+            act['details'] as String,
+          );
+        },
       ),
     );
   }
@@ -334,39 +353,55 @@ class HomePage extends StatelessWidget {
       width: 160,
       margin: const EdgeInsets.only(right: 15),
       child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        elevation: 5,
+        shadowColor: AppColors.primary.withOpacity(0.25),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF80C4C0).withOpacity(0.1),
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.primary.withOpacity(0.15),
+                      AppColors.primary.withOpacity(0.05)
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, size: 30, color: const Color(0xFF80C4C0)),
+                child: Icon(icon, size: 30, color: AppColors.primary),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               Text(
                 title,
                 style: const TextStyle(
+                  fontFamily: 'RobotoMono',
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF1F3558),
+                  color: AppColors.textDark,
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(ageRange,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-              const SizedBox(height: 4),
-              Text(details,
-                  style: const TextStyle(
-                      fontSize: 10,
-                      color: Color(0xFF80C4C0),
-                      fontWeight: FontWeight.w500)),
+              const SizedBox(height: 6),
+              Text(
+                ageRange,
+                style: const TextStyle(
+                    fontFamily: 'RobotoMono', fontSize: 13, color: Colors.grey),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                details,
+                style: const TextStyle(
+                  fontFamily: 'RobotoMono',
+                  fontSize: 12,
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ],
           ),
         ),
@@ -375,7 +410,7 @@ class HomePage extends StatelessWidget {
   }
 }
 
-// صفحة البروفايل
+// ======================== PROFILE PAGE ===========================
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
@@ -385,7 +420,11 @@ class ProfilePage extends StatelessWidget {
       child: Text(
         'Profile Page',
         style: TextStyle(
-            fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1F3558)),
+          fontFamily: 'RobotoMono',
+          fontSize: 24,
+          fontWeight: FontWeight.bold,
+          color: AppColors.textDark,
+        ),
       ),
     );
   }

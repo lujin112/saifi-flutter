@@ -4,7 +4,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'theme.dart';
-import 'HomeScreen.dart'; // تأكد أن الملف موجود
+import 'HomeScreen.dart';
 
 class LocationSelectionScreen extends StatefulWidget {
   const LocationSelectionScreen({super.key});
@@ -29,7 +29,6 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
 
   Future<void> _requestLocationPermission() async {
     setState(() => _isLoading = true);
-
     final status = await Permission.location.request();
     if (status.isGranted) {
       await _getCurrentLocation();
@@ -38,13 +37,11 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
     } else if (status.isPermanentlyDenied) {
       _showPermissionPermanentlyDeniedMessage();
     }
-
     setState(() => _isLoading = false);
   }
 
   Future<void> _getCurrentLocation() async {
     setState(() => _isLoading = true);
-
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
@@ -56,8 +53,10 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
         desiredAccuracy: LocationAccuracy.high,
       );
 
-      String address =
-          await _getAddressFromLatLng(position.latitude, position.longitude);
+      String address = await _getAddressFromLatLng(
+        position.latitude,
+        position.longitude,
+      );
 
       setState(() {
         _currentPosition = position;
@@ -78,14 +77,15 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
           Marker(
             markerId: const MarkerId('current_location'),
             position: LatLng(
-                _currentPosition!.latitude, _currentPosition!.longitude),
+              _currentPosition!.latitude,
+              _currentPosition!.longitude,
+            ),
             infoWindow: InfoWindow(
               title: 'Your Location',
               snippet:
                   '${_currentPosition!.latitude.toStringAsFixed(4)}, ${_currentPosition!.longitude.toStringAsFixed(4)}',
             ),
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-                BitmapDescriptor.hueRed),
+            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
           ),
         };
       });
@@ -99,11 +99,9 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
     }
   }
 
-  Future<String> _getAddressFromLatLng(
-      double latitude, double longitude) async {
+  Future<String> _getAddressFromLatLng(double latitude, double longitude) async {
     try {
-      List<Placemark> placemarks =
-          await placemarkFromCoordinates(latitude, longitude);
+      List<Placemark> placemarks = await placemarkFromCoordinates(latitude, longitude);
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks.first;
         return "${place.street ?? ''}, ${place.locality ?? ''}, ${place.administrativeArea ?? ''}";
@@ -116,156 +114,167 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Select Location', style: AppTextStyles.heading),
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.white,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Choose Your Location', style: AppTextStyles.heading),
-            const SizedBox(height: 20),
-
-            TextFormField(
-              decoration: const InputDecoration(
-                labelText: 'Search Location (coming soon)',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.search),
-              ),
+    return ThemedBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: const Text(
+            'Select Location',
+            style: TextStyle(
+              fontFamily: 'RobotoMono',
+              fontWeight: FontWeight.w600,
             ),
-            const SizedBox(height: 20),
-
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _isLoading ? null : _getCurrentLocation,
-                icon: _isLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : const Icon(Icons.my_location),
-                label: Text(
-                  _isLoading ? 'Detecting location...' : 'Use Current Location',
-                ),
-              ),
-            ),
-            const SizedBox(height: 30),
-
-            if (_currentPosition != null) ...[
-              Card(
-                color: Colors.white,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.location_on, color: Colors.green),
-                          SizedBox(width: 8),
-                          Text(
-                            'Your Current Location',
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Text(_locationName,
-                          style:
-                              const TextStyle(fontSize: 14, color: Colors.grey)),
-                      const SizedBox(height: 5),
-                      Text(
-                        'Coordinates: ${_currentPosition!.latitude.toStringAsFixed(4)}, ${_currentPosition!.longitude.toStringAsFixed(4)}',
-                        style:
-                            const TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                    ],
-                  ),
+          ),
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          centerTitle: true,
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Choose Your Location',
+                style: TextStyle(
+                  fontFamily: 'RobotoMono',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
+                  color: AppColors.textDark,
                 ),
               ),
               const SizedBox(height: 20),
-            ],
 
-            Container(
-              height: 200,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.grey),
+              TextFormField(
+                decoration: const InputDecoration(
+                  labelText: 'Search Location (coming soon)',
+                  prefixIcon: Icon(Icons.search, color: AppColors.primary),
+                ),
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: GoogleMap(
-                  onMapCreated: (GoogleMapController controller) {
-                    _mapController = controller;
-                    if (_currentPosition != null) {
-                      _updateMapMarker();
-                    }
-                  },
-                  initialCameraPosition: CameraPosition(
-                    target: _currentPosition != null
-                        ? LatLng(_currentPosition!.latitude,
-                            _currentPosition!.longitude)
-                        : const LatLng(24.7136, 46.6753),
-                    zoom: _currentPosition != null ? 15.0 : 10.0,
+              const SizedBox(height: 20),
+
+              // زر تحديد الموقع
+              GestureDetector(
+                onTap: _isLoading ? null : _getCurrentLocation,
+                child: AbsorbPointer(
+                  absorbing: _isLoading,
+                  child: ShinyButton(
+                    text: _isLoading ? "Detecting location..." : "Use Current Location",
+                    onPressed: _getCurrentLocation,
                   ),
-                  markers: _markers,
-                  myLocationEnabled: true,
-                  myLocationButtonEnabled: false,
-                  zoomControlsEnabled: false,
                 ),
               ),
-            ),
-            const SizedBox(height: 30),
+              const SizedBox(height: 25),
 
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed:
-                    _currentPosition != null && !_isLoading ? _confirmLocation : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      _locationConfirmed ? Colors.green : AppColors.primary,
-                  foregroundColor: Colors.white,
+              if (_currentPosition != null)
+                Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 4,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: const [
+                            Icon(Icons.location_on, color: AppColors.primary),
+                            SizedBox(width: 8),
+                            Text(
+                              'Your Current Location',
+                              style: TextStyle(
+                                fontFamily: 'RobotoMono',
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          _locationName,
+                          style: const TextStyle(
+                            fontFamily: 'RobotoMono',
+                            fontSize: 14,
+                            color: AppColors.textDark,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          'Lat: ${_currentPosition!.latitude.toStringAsFixed(4)}, Lng: ${_currentPosition!.longitude.toStringAsFixed(4)}',
+                          style: const TextStyle(
+                            fontFamily: 'RobotoMono',
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                child: Text(
-                  _locationConfirmed ? 'Location Confirmed' : 'Confirm Location',
-                ),
-              ),
-            ),
+              const SizedBox(height: 20),
 
-            if (_locationConfirmed) ...[
-              const SizedBox(height: 15),
-              SizedBox(
+              // الخريطة
+              Container(
+                height: 250,
                 width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _completeRegistrationAndNavigateToHome,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text(
-                    'Complete Registration & Go to Home',
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.5)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withOpacity(0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: GoogleMap(
+                    onMapCreated: (controller) {
+                      _mapController = controller;
+                      if (_currentPosition != null) _updateMapMarker();
+                    },
+                    initialCameraPosition: CameraPosition(
+                      target: _currentPosition != null
+                          ? LatLng(_currentPosition!.latitude, _currentPosition!.longitude)
+                          : const LatLng(24.7136, 46.6753),
+                      zoom: _currentPosition != null ? 15.0 : 10.0,
+                    ),
+                    markers: _markers,
+                    myLocationEnabled: true,
+                    myLocationButtonEnabled: false,
+                    zoomControlsEnabled: false,
                   ),
                 ),
               ),
+              const SizedBox(height: 30),
+
+              // زر تأكيد الموقع
+              GestureDetector(
+                onTap: (_currentPosition != null && !_isLoading) ? _confirmLocation : null,
+                child: AbsorbPointer(
+                  absorbing: _isLoading,
+                  child: ShinyButton(
+                    text: _locationConfirmed
+                        ? "Location Confirmed"
+                        : "Confirm Location",
+                    onPressed: _confirmLocation,
+                  ),
+                ),
+              ),
+
+              if (_locationConfirmed) ...[
+                const SizedBox(height: 20),
+                ShinyButton(
+                  text: "Complete Registration & Go to Home",
+                  onPressed: _completeRegistrationAndNavigateToHome,
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -285,7 +294,7 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
   void _saveLocationToDatabase() {
     if (_currentPosition != null) {
       print(
-          'Saving location to database: ${_currentPosition!.latitude}, ${_currentPosition!.longitude}');
+          'Saving location: ${_currentPosition!.latitude}, ${_currentPosition!.longitude}');
     }
   }
 

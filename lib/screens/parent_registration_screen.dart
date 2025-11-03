@@ -15,7 +15,7 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _idController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
-  TextEditingController _emailController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -32,224 +32,232 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text(
-          'Parent Registration',
-          style: AppTextStyles.heading,
+    return ThemedBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: const Text(
+            'Parent Registration',
+            style: TextStyle(
+              fontFamily: 'RobotoMono',
+              fontWeight: FontWeight.w600,
+              fontSize: 20,
+            ),
+          ),
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          centerTitle: true,
         ),
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.white,
-        centerTitle: true,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              Image.asset(
-                'assets/parentReg.png',
-                height: 150,
-                fit: BoxFit.contain,
-              ),
-              const SizedBox(height: 20),
+        body: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                Image.asset(
+                  'assets/parentReg.png',
+                  height: 140,
+                  fit: BoxFit.contain,
+                ),
+                const SizedBox(height: 25),
 
-              Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    // First Name & Last Name
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildTextField(
-                            controller: _firstNameController,
-                            label: 'First Name',
-                            maxLength: 15,
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      // First & Last Name
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildTextField(
+                              controller: _firstNameController,
+                              label: 'First Name',
+                              maxLength: 15,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 15),
-                        Expanded(
-                          child: _buildTextField(
-                            controller: _lastNameController,
-                            label: 'Last Name',
-                            maxLength: 15,
+                          const SizedBox(width: 15),
+                          Expanded(
+                            child: _buildTextField(
+                              controller: _lastNameController,
+                              label: 'Last Name',
+                              maxLength: 15,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 15),
-
-                    // ID
-                    _buildTextField(
-                      controller: _idController,
-                      label: 'ID',
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                        LengthLimitingTextInputFormatter(10),
-                      ],
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter ID';
-                        }
-                        if (value.length != 10) {
-                          return 'ID must be exactly 10 digits';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 15),
-
-                    // Phone
-                    _buildTextField(
-                      controller: _phoneController,
-                      label: 'Phone Number',
-                      keyboardType: TextInputType.phone,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                        LengthLimitingTextInputFormatter(10),
-                      ],
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter Phone Number';
-                        }
-                        if (value.length != 10) {
-                          return 'Phone must be exactly 10 digits';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 15),
-
-                    // Email with validation of domain
-                    TextFormField(
-                      controller: _emailController,
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        border: OutlineInputBorder(),
-                        hintText: 'username@example.com',
+                        ],
                       ),
-                      keyboardType: TextInputType.emailAddress,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your email';
-                        }
-                        if (!_emailDomains
-                            .any((domain) => value.endsWith(domain))) {
-                          return 'Email must end with ${_emailDomains.join(", ")}';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 15),
+                      const SizedBox(height: 15),
 
-                    // Password with rules icon
-                    TextFormField(
-                      controller: _passwordController,
-                      obscureText: true,
-                      decoration: InputDecoration(
-                        labelText: 'Password',
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        suffixIcon: IconButton(
-                          icon: const Icon(Icons.info_outline,
-                              color: AppColors.primary),
-                          onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: const Text('Password Requirements'),
-                                content: const Text(
-                                  '- At least 8 characters\n'
-                                  '- At least 1 uppercase letter\n'
-                                  '- At least 1 lowercase letter\n'
-                                  '- At least 1 number',
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: const Text('OK'),
+                      // ID
+                      _buildTextField(
+                        controller: _idController,
+                        label: 'ID',
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(10),
+                        ],
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter ID';
+                          }
+                          if (value.length != 10) {
+                            return 'ID must be exactly 10 digits';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 15),
+
+                      // Phone
+                      _buildTextField(
+                        controller: _phoneController,
+                        label: 'Phone Number',
+                        keyboardType: TextInputType.phone,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(10),
+                        ],
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter phone number';
+                          }
+                          if (value.length != 10) {
+                            return 'Phone must be exactly 10 digits';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 15),
+
+                      // Email
+                      _buildTextField(
+                        controller: _emailController,
+                        label: 'Email',
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter email';
+                          }
+                          if (!_emailDomains
+                              .any((domain) => value.endsWith(domain))) {
+                            return 'Email must end with ${_emailDomains.join(", ")}';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 15),
+
+                      // Password
+                      TextFormField(
+                        controller: _passwordController,
+                        obscureText: true,
+                        style: const TextStyle(fontFamily: 'RobotoMono'),
+                        decoration: InputDecoration(
+                          labelText: 'Password',
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          suffixIcon: IconButton(
+                            icon: const Icon(Icons.info_outline,
+                                color: AppColors.primary),
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Password Requirements'),
+                                  content: const Text(
+                                    '- At least 8 characters\n'
+                                    '- At least 1 uppercase letter\n'
+                                    '- At least 1 lowercase letter\n'
+                                    '- At least 1 number',
                                   ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter Password';
-                        }
-                        if (value.length < 8) {
-                          return 'Password must be at least 8 characters';
-                        }
-                        if (!RegExp(r'[A-Z]').hasMatch(value)) {
-                          return 'Password must contain an uppercase letter';
-                        }
-                        if (!RegExp(r'[a-z]').hasMatch(value)) {
-                          return 'Password must contain a lowercase letter';
-                        }
-                        if (!RegExp(r'[0-9]').hasMatch(value)) {
-                          return 'Password must contain a number';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 30),
-
-                    // Add Child Button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: _showAddChildDialog,
-                        child: const Text('Add Child'),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Display children
-                    if (_children.isNotEmpty) ...[
-                      const Text(
-                        'Added Children:',
-                        style: AppTextStyles.heading,
-                      ),
-                      const SizedBox(height: 10),
-                      ..._children.map((child) {
-                        return Card(
-                          margin: const EdgeInsets.symmetric(vertical: 5),
-                          child: ListTile(
-                            leading: Icon(
-                              Icons.child_care, // الأيقونة الأصلية
-                              color: child['gender'] == 'Female'
-                                  ? Colors.pinkAccent
-                                  : AppColors.primary,
-                              size: 32,
-                            ),
-                            title: Text(
-                                '${child['firstName']} ${child['lastName']}'),
-                            subtitle: Text('Gender: ${child['gender']}'),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () {
-                                setState(() {
-                                  _children.remove(child);
-                                });
-                              },
-                            ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: const Text('OK'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
                           ),
-                        );
-                      }).toList(),
-                      const SizedBox(height: 20),
-                    ],
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter password';
+                          }
+                          if (value.length < 8) {
+                            return 'Password must be at least 8 characters';
+                          }
+                          if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                            return 'Password must contain an uppercase letter';
+                          }
+                          if (!RegExp(r'[a-z]').hasMatch(value)) {
+                            return 'Password must contain a lowercase letter';
+                          }
+                          if (!RegExp(r'[0-9]').hasMatch(value)) {
+                            return 'Password must contain a number';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 25),
 
-                    // Continue Button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
+                      // Add Child Button
+                      ShinyButton(
+                        text: "Add Child",
+                        onPressed: _showAddChildDialog,
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Display children list
+                      if (_children.isNotEmpty) ...[
+                        const Text(
+                          'Added Children:',
+                          style: TextStyle(
+                            fontFamily: 'RobotoMono',
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textDark,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ..._children.map((child) {
+                          return Card(
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                            elevation: 2,
+                            child: ListTile(
+                              leading: Icon(
+                                Icons.child_care,
+                                color: child['gender'] == 'Female'
+                                    ? Colors.pinkAccent
+                                    : AppColors.primary,
+                              ),
+                              title: Text(
+                                '${child['firstName']} ${child['lastName']}',
+                                style: const TextStyle(fontFamily: 'RobotoMono'),
+                              ),
+                              subtitle: Text(
+                                'Gender: ${child['gender']}',
+                                style: const TextStyle(fontFamily: 'RobotoMono'),
+                              ),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.delete,
+                                    color: Colors.redAccent),
+                                onPressed: () {
+                                  setState(() {
+                                    _children.remove(child);
+                                  });
+                                },
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                        const SizedBox(height: 20),
+                      ],
+
+                      // Continue Button
+                      ShinyButton(
+                        text: "Complete Child Information",
                         onPressed: () {
                           if (_formKey.currentState!.validate()) {
                             if (_children.isEmpty) {
@@ -269,20 +277,19 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
                             }
                           }
                         },
-                        child: const Text('Complete Child Information'),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  // Custom text field with validator
+  // Base TextField builder
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
@@ -298,9 +305,10 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
       inputFormatters: inputFormatters,
       obscureText: obscureText,
       maxLength: maxLength,
+      style: const TextStyle(fontFamily: 'RobotoMono'),
       decoration: InputDecoration(
         labelText: label,
-        counterText: "", // يخفي العداد
+        counterText: "",
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
         fillColor: AppColors.white,
@@ -318,7 +326,7 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
     );
   }
 
-  // Dialog for adding child
+  // Add child dialog
   void _showAddChildDialog() {
     final TextEditingController childFirstNameController =
         TextEditingController();
@@ -330,7 +338,8 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Add Child Information'),
+          title: const Text('Add Child Information',
+              style: TextStyle(fontFamily: 'RobotoMono')),
           content: SingleChildScrollView(
             child: Column(
               children: [
@@ -345,7 +354,6 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
                     maxLength: 15),
                 const SizedBox(height: 15),
 
-                // Gender dropdown
                 DropdownButtonFormField<String>(
                   value: selectedGender,
                   decoration: const InputDecoration(
@@ -353,14 +361,8 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
                     border: OutlineInputBorder(),
                   ),
                   items: const [
-                    DropdownMenuItem(
-                      value: 'Male',
-                      child: Text('Male'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'Female',
-                      child: Text('Female'),
-                    ),
+                    DropdownMenuItem(value: 'Male', child: Text('Male')),
+                    DropdownMenuItem(value: 'Female', child: Text('Female')),
                   ],
                   onChanged: (value) {
                     selectedGender = value;
@@ -374,9 +376,11 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: const Text('Cancel',
+                  style: TextStyle(fontFamily: 'RobotoMono')),
             ),
-            ElevatedButton(
+            ShinyButton(
+              text: "Add Child",
               onPressed: () {
                 if (childFirstNameController.text.isNotEmpty &&
                     childLastNameController.text.isNotEmpty &&
@@ -389,13 +393,11 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
                     });
                   });
                   Navigator.of(context).pop();
-                  _showConfirmationMessage(
-                      context, 'Child added successfully!');
+                  _showConfirmationMessage(context, 'Child added successfully!');
                 } else {
                   _showMessage(context, 'Error', 'Please fill all fields');
                 }
               },
-              child: const Text('Add Child'),
             ),
           ],
         );
@@ -408,13 +410,16 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Success'),
-          content: Text(message),
+          title: const Text('Success',
+              style: TextStyle(fontFamily: 'RobotoMono')),
+          content: Text(message,
+              style: const TextStyle(fontFamily: 'RobotoMono')),
           icon: const Icon(Icons.check_circle, color: Colors.green, size: 48),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
+              child:
+                  const Text('OK', style: TextStyle(fontFamily: 'RobotoMono')),
             ),
           ],
         );
@@ -427,12 +432,15 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text(title),
-          content: Text(message),
+          title:
+              Text(title, style: const TextStyle(fontFamily: 'RobotoMono')),
+          content:
+              Text(message, style: const TextStyle(fontFamily: 'RobotoMono')),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
+              child:
+                  const Text('OK', style: TextStyle(fontFamily: 'RobotoMono')),
             ),
           ],
         );
