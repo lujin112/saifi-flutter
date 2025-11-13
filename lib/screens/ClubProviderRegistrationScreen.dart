@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'activity_registration_screen.dart';
 
 class ClubProviderRegistrationScreen extends StatefulWidget {
@@ -22,7 +24,8 @@ class _ClubProviderRegistrationScreenState
 
   final _formKey = GlobalKey<FormState>();
 
-  final TextEditingController _providerNameController = TextEditingController();
+  final TextEditingController _providerNameController =
+      TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
@@ -98,16 +101,56 @@ class _ClubProviderRegistrationScreenState
     }
   }
 
-  void _register() {
+  Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // حذفنا التحقق الإجباري للموقع
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const ActivityRegistrationScreen(),
-      ),
-    );
+    final auth = FirebaseAuth.instance;
+    final firestore = FirebaseFirestore.instance;
+
+    try {
+      // 1. Create provider account
+      UserCredential userCredential =
+          await auth.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      String uid = userCredential.user!.uid;
+
+      // 2. Prepare provider data
+      Map<String, dynamic> providerData = {
+        'provider_id': uid,
+        'provider_name': _providerNameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'phone_number': _phoneController.text.trim(),
+        'crn': _crnController.text.trim().isEmpty
+            ? null
+            : _crnController.text.trim(),
+        'location': _currentPosition == null
+            ? null
+            : {
+                'latitude': _currentPosition!.latitude,
+                'longitude': _currentPosition!.longitude,
+                'address': _locationName,
+              },
+        'created_at': DateTime.now(),
+      };
+
+      // 3. Save to Firestore
+      await firestore.collection('providers').doc(uid).set(providerData);
+
+      // 4. Navigate to next screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const ActivityRegistrationScreen(),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Registration error: $e")),
+      );
+    }
   }
 
   @override
@@ -160,7 +203,7 @@ class _ClubProviderRegistrationScreenState
                 ),
                 const SizedBox(height: 15),
 
-                // Password with rules
+                // Password
                 TextFormField(
                   controller: _passwordController,
                   obscureText: true,
@@ -213,7 +256,7 @@ class _ClubProviderRegistrationScreenState
                 ),
                 const SizedBox(height: 15),
 
-                // Phone Number
+                // Phone
                 TextFormField(
                   controller: _phoneController,
                   decoration: const InputDecoration(
@@ -237,11 +280,12 @@ class _ClubProviderRegistrationScreenState
                 ),
                 const SizedBox(height: 15),
 
-                // CRN (optional now)
+                // CRN
                 TextFormField(
                   controller: _crnController,
                   decoration: const InputDecoration(
-                    labelText: 'Commercial Registration Number (optional)',
+                    labelText:
+                        'Commercial Registration Number (optional)',
                     border: OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.number,
@@ -250,7 +294,9 @@ class _ClubProviderRegistrationScreenState
                     LengthLimitingTextInputFormatter(10)
                   ],
                   validator: (value) {
-                    if (value != null && value.isNotEmpty && value.length != 10) {
+                    if (value != null &&
+                        value.isNotEmpty &&
+                        value.length != 10) {
                       return 'CRN must be exactly 10 digits if provided';
                     }
                     return null;
@@ -263,10 +309,12 @@ class _ClubProviderRegistrationScreenState
                     child: Padding(
                       padding: const EdgeInsets.all(12.0),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment:
+                            CrossAxisAlignment.start,
                         children: [
                           const Text("Selected Location:",
-                              style: TextStyle(fontWeight: FontWeight.bold)),
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold)),
                           Text(
                               "Lat: ${_currentPosition!.latitude}, Lng: ${_currentPosition!.longitude}"),
                           Text("Address: $_locationName"),
@@ -279,19 +327,19 @@ class _ClubProviderRegistrationScreenState
                     Expanded(
                       child: Text(
                         _locationName,
-                        style:
-                            const TextStyle(fontSize: 14, color: Colors.grey),
+                        style: const TextStyle(
+                            fontSize: 14, color: Colors.grey),
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.location_on, color: Colors.red),
+                      icon: const Icon(Icons.location_on,
+                          color: Colors.red),
                       onPressed: _getLocation,
                     ),
                   ],
                 ),
                 const SizedBox(height: 30),
 
-                // Arrow button with animation
                 Align(
                   alignment: Alignment.centerRight,
                   child: GestureDetector(
@@ -300,7 +348,8 @@ class _ClubProviderRegistrationScreenState
                       animation: _arrowAnimation,
                       builder: (context, child) {
                         return Padding(
-                          padding: EdgeInsets.only(right: _arrowAnimation.value),
+                          padding: EdgeInsets.only(
+                              right: _arrowAnimation.value),
                           child: const Icon(
                             Icons.arrow_forward,
                             size: 48,

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'theme.dart';
 import 'ChildInfoScreen.dart';
 
@@ -64,7 +66,7 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
                   key: _formKey,
                   child: Column(
                     children: [
-                      // First & Last Name
+
                       Row(
                         children: [
                           Expanded(
@@ -86,7 +88,6 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
                       ),
                       const SizedBox(height: 15),
 
-                      // ID
                       _buildTextField(
                         controller: _idController,
                         label: 'ID',
@@ -107,7 +108,6 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
                       ),
                       const SizedBox(height: 15),
 
-                      // Phone
                       _buildTextField(
                         controller: _phoneController,
                         label: 'Phone Number',
@@ -128,7 +128,6 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
                       ),
                       const SizedBox(height: 15),
 
-                      // Email
                       _buildTextField(
                         controller: _emailController,
                         label: 'Email',
@@ -146,7 +145,6 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
                       ),
                       const SizedBox(height: 15),
 
-                      // Password
                       TextFormField(
                         controller: _passwordController,
                         obscureText: true,
@@ -155,128 +153,39 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
                           labelText: 'Password',
                           border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12)),
-                          suffixIcon: IconButton(
-                            icon: const Icon(Icons.info_outline,
-                                color: AppColors.primary),
-                            onPressed: () {
-                              showDialog(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: const Text('Password Requirements'),
-                                  content: const Text(
-                                    '- At least 8 characters\n'
-                                    '- At least 1 uppercase letter\n'
-                                    '- At least 1 lowercase letter\n'
-                                    '- At least 1 number',
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context),
-                                      child: const Text('OK'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please enter password';
                           }
-                          if (value.length < 8) {
-                            return 'Password must be at least 8 characters';
-                          }
-                          if (!RegExp(r'[A-Z]').hasMatch(value)) {
-                            return 'Password must contain an uppercase letter';
-                          }
-                          if (!RegExp(r'[a-z]').hasMatch(value)) {
-                            return 'Password must contain a lowercase letter';
-                          }
-                          if (!RegExp(r'[0-9]').hasMatch(value)) {
-                            return 'Password must contain a number';
+                          if (value.length < 8 ||
+                              !RegExp(r'[A-Z]').hasMatch(value) ||
+                              !RegExp(r'[a-z]').hasMatch(value) ||
+                              !RegExp(r'[0-9]').hasMatch(value)) {
+                            return 'Password does not meet requirements';
                           }
                           return null;
                         },
                       ),
                       const SizedBox(height: 25),
 
-                      // Add Child Button
                       ShinyButton(
                         text: "Add Child",
                         onPressed: _showAddChildDialog,
                       ),
                       const SizedBox(height: 20),
 
-                      // Display children list
-                      if (_children.isNotEmpty) ...[
-                        const Text(
-                          'Added Children:',
-                          style: TextStyle(
-                            fontFamily: 'RobotoMono',
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textDark,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        ..._children.map((child) {
-                          return Card(
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10)),
-                            elevation: 2,
-                            child: ListTile(
-                              leading: Icon(
-                                Icons.child_care,
-                                color: child['gender'] == 'Female'
-                                    ? Colors.pinkAccent
-                                    : AppColors.primary,
-                              ),
-                              title: Text(
-                                '${child['firstName']} ${child['lastName']}',
-                                style: const TextStyle(fontFamily: 'RobotoMono'),
-                              ),
-                              subtitle: Text(
-                                'Gender: ${child['gender']}',
-                                style: const TextStyle(fontFamily: 'RobotoMono'),
-                              ),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.delete,
-                                    color: Colors.redAccent),
-                                onPressed: () {
-                                  setState(() {
-                                    _children.remove(child);
-                                  });
-                                },
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                        const SizedBox(height: 20),
-                      ],
+                      if (_children.isNotEmpty)
+                        ..._children.map((child) => ListTile(
+                          title: Text("${child['firstName']} ${child['lastName']}"),
+                          subtitle: Text("Gender: ${child['gender']}"),
+                        )),
 
-                      // Continue Button
+                      const SizedBox(height: 20),
+
                       ShinyButton(
                         text: "Complete Child Information",
-                        onPressed: () {
-                          if (_formKey.currentState!.validate()) {
-                            if (_children.isEmpty) {
-                              _showMessage(
-                                context,
-                                'No Children Added',
-                                'Please add at least one child before continuing.',
-                              );
-                            } else {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      ChildInfoScreen(children: _children),
-                                ),
-                              );
-                            }
-                          }
-                        },
+                        onPressed: _registerParent,
                       ),
                     ],
                   ),
@@ -289,7 +198,45 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
     );
   }
 
-  // Base TextField builder
+  Future<void> _registerParent() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    try {
+      final auth = FirebaseAuth.instance;
+
+      final userCredential = await auth.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      final uid = userCredential.user!.uid;
+
+      await FirebaseFirestore.instance.collection("parents").doc(uid).set({
+        "user_uid": uid,
+        "first_name": _firstNameController.text.trim(),
+        "last_name": _lastNameController.text.trim(),
+        "email": _emailController.text.trim(),
+        "phone": _phoneController.text.trim(),
+        "children_count": _children.length,
+        "created_at": FieldValue.serverTimestamp(),
+        "location": {
+          "lat": 0,
+          "lng": 0,
+        },
+      });
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ChildInfoScreen(children: _children),
+        ),
+      );
+
+    } catch (e) {
+      _showMessage(context, "Registration Error", e.toString());
+    }
+  }
+
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
@@ -314,70 +261,54 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
         fillColor: AppColors.white,
       ),
       validator: validator ??
-          (value) {
-            if (value == null || value.isEmpty) {
-              return 'Please enter $label';
-            }
-            if (maxLength != null && value.length > maxLength) {
-              return '$label cannot exceed $maxLength characters';
-            }
+              (value) {
+            if (value == null || value.isEmpty) return 'Please enter $label';
             return null;
           },
     );
   }
 
-  // Add child dialog
   void _showAddChildDialog() {
-    final TextEditingController childFirstNameController =
-        TextEditingController();
-    final TextEditingController childLastNameController =
-        TextEditingController();
+    final TextEditingController childFirstNameController = TextEditingController();
+    final TextEditingController childLastNameController = TextEditingController();
     String? selectedGender;
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Add Child Information',
-              style: TextStyle(fontFamily: 'RobotoMono')),
-          content: SingleChildScrollView(
-            child: Column(
-              children: [
-                _buildTextField(
-                    controller: childFirstNameController,
-                    label: 'Child First Name',
-                    maxLength: 15),
-                const SizedBox(height: 15),
-                _buildTextField(
-                    controller: childLastNameController,
-                    label: 'Child Last Name',
-                    maxLength: 15),
-                const SizedBox(height: 15),
-
-                DropdownButtonFormField<String>(
-                  value: selectedGender,
-                  decoration: const InputDecoration(
-                    labelText: 'Gender',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'Male', child: Text('Male')),
-                    DropdownMenuItem(value: 'Female', child: Text('Female')),
-                  ],
-                  onChanged: (value) {
-                    selectedGender = value;
-                  },
-                  validator: (value) =>
-                      value == null ? 'Please select gender' : null,
+          title: const Text('Add Child Information'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildTextField(
+                  controller: childFirstNameController,
+                  label: 'Child First Name',
+                  maxLength: 15),
+              const SizedBox(height: 15),
+              _buildTextField(
+                  controller: childLastNameController,
+                  label: 'Child Last Name',
+                  maxLength: 15),
+              const SizedBox(height: 15),
+              DropdownButtonFormField<String>(
+                decoration: const InputDecoration(
+                  labelText: 'Gender',
+                  border: OutlineInputBorder(),
                 ),
-              ],
-            ),
+                items: const [
+                  DropdownMenuItem(value: 'Male', child: Text('Male')),
+                  DropdownMenuItem(value: 'Female', child: Text('Female')),
+                ],
+                onChanged: (value) => selectedGender = value,
+                validator: (value) => value == null ? 'Select gender' : null,
+              ),
+            ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel',
-                  style: TextStyle(fontFamily: 'RobotoMono')),
+              child: const Text('Cancel'),
             ),
             ShinyButton(
               text: "Add Child",
@@ -393,33 +324,8 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
                     });
                   });
                   Navigator.of(context).pop();
-                  _showConfirmationMessage(context, 'Child added successfully!');
-                } else {
-                  _showMessage(context, 'Error', 'Please fill all fields');
                 }
               },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showConfirmationMessage(BuildContext context, String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Success',
-              style: TextStyle(fontFamily: 'RobotoMono')),
-          content: Text(message,
-              style: const TextStyle(fontFamily: 'RobotoMono')),
-          icon: const Icon(Icons.check_circle, color: Colors.green, size: 48),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child:
-                  const Text('OK', style: TextStyle(fontFamily: 'RobotoMono')),
             ),
           ],
         );
@@ -430,21 +336,13 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
   void _showMessage(BuildContext context, String title, String message) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title:
-              Text(title, style: const TextStyle(fontFamily: 'RobotoMono')),
-          content:
-              Text(message, style: const TextStyle(fontFamily: 'RobotoMono')),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child:
-                  const Text('OK', style: TextStyle(fontFamily: 'RobotoMono')),
-            ),
-          ],
-        );
-      },
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK')),
+        ],
+      ),
     );
   }
 

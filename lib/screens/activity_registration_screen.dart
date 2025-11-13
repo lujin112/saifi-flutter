@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'theme.dart';
 
 class ActivityRegistrationScreen extends StatefulWidget {
   const ActivityRegistrationScreen({super.key});
 
   @override
-  State<ActivityRegistrationScreen> createState() => _ActivityRegistrationScreenState();
+  State<ActivityRegistrationScreen> createState() =>
+      _ActivityRegistrationScreenState();
 }
 
-class _ActivityRegistrationScreenState extends State<ActivityRegistrationScreen> {
+class _ActivityRegistrationScreenState
+    extends State<ActivityRegistrationScreen> {
   final TextEditingController _startDateController = TextEditingController();
   final TextEditingController _endDateController = TextEditingController();
   final TextEditingController _titleController = TextEditingController();
@@ -88,7 +92,8 @@ class _ActivityRegistrationScreenState extends State<ActivityRegistrationScreen>
               ),
               const SizedBox(height: 15),
 
-              _buildTextArea(_descriptionController, 'Description', Icons.description_outlined),
+              _buildTextArea(_descriptionController, 'Description',
+                  Icons.description_outlined),
               const SizedBox(height: 15),
 
               Row(
@@ -122,11 +127,13 @@ class _ActivityRegistrationScreenState extends State<ActivityRegistrationScreen>
               ),
               const SizedBox(height: 15),
 
-              _buildInput(_capacityController, 'Capacity', Icons.people_alt_outlined,
+              _buildInput(_capacityController, 'Capacity',
+                  Icons.people_alt_outlined,
                   inputType: TextInputType.number),
               const SizedBox(height: 15),
 
-              _buildInput(_priceController, 'Price (SAR)', Icons.attach_money,
+              _buildInput(
+                  _priceController, 'Price (SAR)', Icons.attach_money,
                   inputType: TextInputType.number),
               const SizedBox(height: 15),
 
@@ -138,7 +145,8 @@ class _ActivityRegistrationScreenState extends State<ActivityRegistrationScreen>
                 icon: Icons.check_circle_outline,
                 value: _selectedActivityStatus,
                 items: const ['Active', 'Inactive', 'Draft'],
-                onChanged: (val) => setState(() => _selectedActivityStatus = val),
+                onChanged: (val) =>
+                    setState(() => _selectedActivityStatus = val),
               ),
               const SizedBox(height: 30),
 
@@ -153,7 +161,8 @@ class _ActivityRegistrationScreenState extends State<ActivityRegistrationScreen>
     );
   }
 
-  Widget _buildInput(TextEditingController controller, String label, IconData icon,
+  Widget _buildInput(TextEditingController controller, String label,
+      IconData icon,
       {TextInputType inputType = TextInputType.text}) {
     return TextFormField(
       controller: controller,
@@ -168,7 +177,8 @@ class _ActivityRegistrationScreenState extends State<ActivityRegistrationScreen>
     );
   }
 
-  Widget _buildTextArea(TextEditingController controller, String label, IconData icon) {
+  Widget _buildTextArea(
+      TextEditingController controller, String label, IconData icon) {
     return TextFormField(
       controller: controller,
       maxLines: 3,
@@ -198,7 +208,9 @@ class _ActivityRegistrationScreenState extends State<ActivityRegistrationScreen>
           .map(
             (item) => DropdownMenuItem<T>(
               value: item,
-              child: Text(itemBuilder != null ? itemBuilder(item) : item.toString()),
+              child: Text(itemBuilder != null
+                  ? itemBuilder(item)
+                  : item.toString()),
             ),
           )
           .toList(),
@@ -299,7 +311,7 @@ class _ActivityRegistrationScreenState extends State<ActivityRegistrationScreen>
     }
   }
 
-  void _saveActivity(BuildContext context) {
+  Future<void> _saveActivity(BuildContext context) async {
     if (_titleController.text.isEmpty ||
         _selectedDuration == null ||
         _selectedAgeRanges.isEmpty ||
@@ -309,19 +321,54 @@ class _ActivityRegistrationScreenState extends State<ActivityRegistrationScreen>
       return;
     }
 
-    Future.delayed(const Duration(milliseconds: 400), () {
-      _showMessage(context, 'Success', 'Activity has been saved successfully!', true);
-    });
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        _showMessage(context, 'Error', 'Provider not logged in!', false);
+        return;
+      }
+
+      final firestore = FirebaseFirestore.instance;
+
+      final activityDoc = firestore
+          .collection('providers')
+          .doc(user.uid)
+          .collection('activities')
+          .doc();
+
+      Map<String, dynamic> activityData = {
+        'activity_id': activityDoc.id,
+        'title': _titleController.text.trim(),
+        'description': _descriptionController.text.trim(),
+        'start_date': _startDateController.text.trim(),
+        'end_date': _endDateController.text.trim(),
+        'duration_hours': _selectedDuration,
+        'capacity': int.tryParse(_capacityController.text.trim()) ?? 0,
+        'price_sar': double.tryParse(_priceController.text.trim()) ?? 0.0,
+        'age_ranges': _selectedAgeRanges,
+        'activity_status': _selectedActivityStatus,
+        'activity_type': _selectedActivityType,
+        'created_at': DateTime.now(),
+      };
+
+      await activityDoc.set(activityData);
+
+      _showMessage(context, 'Success', 'Activity added successfully!', true);
+    } catch (e) {
+      _showMessage(context, 'Error', 'Failed to save activity: $e', false);
+    }
   }
 
-  void _showMessage(BuildContext context, String title, String message, bool success) {
+  void _showMessage(
+      BuildContext context, String title, String message, bool success) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text(
             title,
-            style: const TextStyle(fontFamily: 'RobotoMono', fontWeight: FontWeight.w600),
+            style: const TextStyle(
+                fontFamily: 'RobotoMono', fontWeight: FontWeight.w600),
           ),
           content: Text(
             message,

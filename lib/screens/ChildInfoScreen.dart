@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'theme.dart';
 import 'location_selection_screen.dart';
 
@@ -13,13 +15,13 @@ class ChildInfoScreen extends StatefulWidget {
 }
 
 class _ChildInfoScreenState extends State<ChildInfoScreen> {
-  final Map<int, Set<String>> _selectedInterests = {};
-  final Map<int, String> _birthdays = {};
+  final Map<int, DateTime?> _birthdays = {};
   final Map<int, String> _ids = {};
   final Map<int, String> _notes = {};
-  final Map<int, Set<String>> _selectedCategories = {};
+  final Map<int, Set<String>> _selectedInterests = {};
+  bool _isSaving = false;
 
-  final Map<String, List<String>> _interestsMap = {
+  static const Map<String, List<String>> _interestsMap = {
     'Sports': ['Football', 'Basketball', 'Tennis', 'Swimming', 'Volleyball', 'Gymnastics'],
     'Languages': ['English', 'French', 'Chinese', 'Spanish', 'Arabic'],
     'Self-defense': ['Karate', 'Taekwondo', 'Judo', 'Boxing', 'Kung Fu'],
@@ -29,238 +31,36 @@ class _ChildInfoScreenState extends State<ChildInfoScreen> {
     'Clubs & Activities': ['Science Club', 'Drama Club', 'Debate Club', 'Leadership'],
   };
 
-  int _calculateAge(DateTime birthDate) {
-    DateTime today = DateTime.now();
-    int age = today.year - birthDate.year;
-    if (today.month < birthDate.month ||
-        (today.month == birthDate.month && today.day < birthDate.day)) {
-      age--;
-    }
-    return age;
-  }
-
   @override
   Widget build(BuildContext context) {
     return ThemedBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
-          title: const Text(
-            'Child Information',
-            style: TextStyle(
-              fontFamily: 'RobotoMono',
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          title: const Text('Child Information'),
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
         ),
         body: Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.all(20),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Children Information & Interests',
-                style: TextStyle(
-                  fontFamily: 'RobotoMono',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textDark,
-                ),
-              ),
-              const SizedBox(height: 20),
-
               Expanded(
                 child: ListView.builder(
                   itemCount: widget.children.length,
                   itemBuilder: (context, index) {
-                    final child = widget.children[index];
                     _selectedInterests.putIfAbsent(index, () => {});
-                    _birthdays.putIfAbsent(index, () => "");
-                    _ids.putIfAbsent(index, () => "");
-                    _notes.putIfAbsent(index, () => "");
-                    _selectedCategories.putIfAbsent(index, () => {});
-
-                    int? age;
-                    if (_birthdays[index] != "") {
-                      final parts = _birthdays[index]!.split("/");
-                      if (parts.length == 3) {
-                        final birthDate = DateTime(
-                          int.parse(parts[2]),
-                          int.parse(parts[1]),
-                          int.parse(parts[0]),
-                        );
-                        age = _calculateAge(birthDate);
-                      }
-                    }
-
-                    return Card(
-                      elevation: 4,
-                      shadowColor: AppColors.primary.withOpacity(0.3),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      margin: const EdgeInsets.only(bottom: 18),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.child_care, color: AppColors.primary, size: 28),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    '${child['firstName']} ${child['lastName']} (${child['gender']})',
-                                    style: const TextStyle(
-                                      fontFamily: 'RobotoMono',
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                      color: AppColors.textDark,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-
-                            if (age != null)
-                              Text(
-                                'Age: $age years',
-                                style: const TextStyle(
-                                  fontFamily: 'RobotoMono',
-                                  fontSize: 14,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                            const SizedBox(height: 15),
-
-                            TextFormField(
-                              readOnly: true,
-                              decoration: const InputDecoration(
-                                labelText: 'Birthday',
-                                prefixIcon: Icon(Icons.cake, color: AppColors.primary),
-                              ),
-                              onTap: () async {
-                                final pickedDate = await showDatePicker(
-                                  context: context,
-                                  initialDate: DateTime(2010),
-                                  firstDate: DateTime(2007),
-                                  lastDate: DateTime.now(),
-                                );
-                                if (pickedDate != null) {
-                                  setState(() {
-                                    _birthdays[index] =
-                                        "${pickedDate.day}/${pickedDate.month}/${pickedDate.year}";
-                                  });
-                                }
-                              },
-                              controller: TextEditingController(text: _birthdays[index]),
-                            ),
-                            const SizedBox(height: 15),
-
-                            TextFormField(
-                              decoration: const InputDecoration(
-                                labelText: 'Child ID',
-                                prefixIcon: Icon(Icons.badge_outlined, color: AppColors.primary),
-                              ),
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                              onChanged: (value) => _ids[index] = value,
-                            ),
-                            const SizedBox(height: 20),
-
-                            const Text(
-                              "Select Interest Categories:",
-                              style: TextStyle(
-                                fontFamily: 'RobotoMono',
-                                fontWeight: FontWeight.w500,
-                                fontSize: 15,
-                                color: AppColors.textDark,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-
-                            Column(
-                              children: _interestsMap.keys.map((category) {
-                                final isCategorySelected = _selectedCategories[index]!.contains(category);
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    CheckboxListTile(
-                                      title: Text(
-                                        category,
-                                        style: const TextStyle(fontFamily: 'RobotoMono'),
-                                      ),
-                                      value: isCategorySelected,
-                                      activeColor: AppColors.primary,
-                                      onChanged: (bool? selected) {
-                                        setState(() {
-                                          if (selected == true) {
-                                            _selectedCategories[index]!.add(category);
-                                          } else {
-                                            _selectedCategories[index]!.remove(category);
-                                            _selectedInterests[index]!.removeWhere(
-                                              (interest) =>
-                                                  _interestsMap[category]!.contains(interest),
-                                            );
-                                          }
-                                        });
-                                      },
-                                    ),
-
-                                    if (isCategorySelected)
-                                      Wrap(
-                                        spacing: 8,
-                                        runSpacing: 8,
-                                        children: _interestsMap[category]!.map((interest) {
-                                          final isSelected = _selectedInterests[index]!.contains(interest);
-                                          return FilterChip(
-                                            label: Text(interest),
-                                            selected: isSelected,
-                                            onSelected: (bool selected) {
-                                              setState(() {
-                                                if (selected) {
-                                                  _selectedInterests[index]!.add(interest);
-                                                } else {
-                                                  _selectedInterests[index]!.remove(interest);
-                                                }
-                                              });
-                                            },
-                                            selectedColor: AppColors.primary,
-                                            backgroundColor: Colors.grey[200],
-                                            checkmarkColor: Colors.white,
-                                          );
-                                        }).toList(),
-                                      ),
-                                  ],
-                                );
-                              }).toList(),
-                            ),
-
-                            const SizedBox(height: 20),
-                            TextFormField(
-                              maxLines: 3,
-                              decoration: const InputDecoration(
-                                labelText: 'Parent Notes (about child personality/interests)',
-                                prefixIcon: Icon(Icons.note_alt_outlined, color: AppColors.primary),
-                              ),
-                              onChanged: (value) => _notes[index] = value,
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
+                    return _buildChildCard(widget.children[index], index);
                   },
                 ),
               ),
 
-              const SizedBox(height: 20),
               ShinyButton(
-                text: "Save & Continue to Location",
-                onPressed: () => _saveAndNavigateToLocation(context),
+                text: _isSaving ? "Saving..." : "Save & Continue",
+                onPressed: () {
+                  if (_isSaving) return;
+                  _saveChildren();
+                },
               ),
             ],
           ),
@@ -269,34 +69,109 @@ class _ChildInfoScreenState extends State<ChildInfoScreen> {
     );
   }
 
-  void _saveAndNavigateToLocation(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Success', style: TextStyle(fontFamily: 'RobotoMono')),
-          content: const Text(
-            'Children information and interests have been saved successfully!',
-            style: TextStyle(fontFamily: 'RobotoMono'),
-          ),
-          icon: const Icon(Icons.check_circle, color: Colors.green, size: 48),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const LocationSelectionScreen()),
+  Widget _buildChildCard(Map<String, dynamic> child, int index) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.only(bottom: 18),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("${child['firstName']} ${child['lastName']} (${child['gender']})",
+              style: const TextStyle(fontFamily: 'RobotoMono', fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+
+            const SizedBox(height: 15),
+
+            TextFormField(
+              readOnly: true,
+              decoration: const InputDecoration(labelText: 'Birthday', prefixIcon: Icon(Icons.cake)),
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: DateTime(2010),
+                  firstDate: DateTime(2007),
+                  lastDate: DateTime.now(),
                 );
+                if (picked != null) setState(() => _birthdays[index] = picked);
               },
-              child: const Text(
-                'Continue to Location',
-                style: TextStyle(fontFamily: 'RobotoMono'),
+              controller: TextEditingController(
+                text: _birthdays[index] == null
+                    ? ""
+                    : "${_birthdays[index]!.day}/${_birthdays[index]!.month}/${_birthdays[index]!.year}",
               ),
             ),
+
+            const SizedBox(height: 15),
+
+            TextFormField(
+              decoration: const InputDecoration(labelText: 'Child ID', prefixIcon: Icon(Icons.badge)),
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              onChanged: (v) => _ids[index] = v,
+            ),
+
+            const SizedBox(height: 15),
+
+            const Text("Interests:", style: TextStyle(fontFamily: 'RobotoMono', fontWeight: FontWeight.w600)),
+            Wrap(
+              spacing: 8,
+              children: _interestsMap.entries.expand((group) {
+                return group.value.map((interest) {
+                  final selected = _selectedInterests[index]!.contains(interest);
+                  return FilterChip(
+                    label: Text(interest),
+                    selected: selected,
+                    onSelected: (s) => setState(() {
+                      s ? _selectedInterests[index]!.add(interest) : _selectedInterests[index]!.remove(interest);
+                    }),
+                  );
+                });
+              }).toList(),
+            ),
+
+            const SizedBox(height: 15),
+
+            TextFormField(
+              maxLines: 2,
+              decoration: const InputDecoration(labelText: "Notes"),
+              onChanged: (v) => _notes[index] = v,
+            ),
           ],
-        );
-      },
+        ),
+      ),
     );
+  }
+
+  Future<void> _saveChildren() async {
+    setState(() => _isSaving = true);
+
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final parent = FirebaseFirestore.instance.collection("parents").doc(uid);
+    final batch = FirebaseFirestore.instance.batch();
+
+    for (int i = 0; i < widget.children.length; i++) {
+      final c = widget.children[i];
+      final ref = parent.collection("children").doc();
+
+      batch.set(ref, {
+        "first_name": c['firstName'],
+        "last_name": c['lastName'],
+        "gender": c['gender'],
+        "birthday": _birthdays[i] != null ? Timestamp.fromDate(_birthdays[i]!) : null,
+        "child_id": _ids[i] ?? "",
+        "interests": _selectedInterests[i]!.toList(),
+        "notes": _notes[i] ?? "",
+        "created_at": FieldValue.serverTimestamp(),
+      });
+    }
+
+    await batch.commit();
+
+    setState(() => _isSaving = false);
+
+    Navigator.push(context, MaterialPageRoute(builder: (_) => const LocationSelectionScreen()));
   }
 }

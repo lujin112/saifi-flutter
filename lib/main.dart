@@ -1,8 +1,17 @@
 import 'package:flutter/material.dart';
-import 'screens/theme.dart'; // استدعاء ملف الثيم اللي سويناه
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart'; // هذا الملف بيتولد تلقائياً بعد أمر flutterfire configure
+import 'screens/theme.dart';
 import 'screens/splash_screen.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // تهيئة Firebase
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp(const MyApp());
 }
 
@@ -14,7 +23,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Parent Connect',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme, // ربط الثيم المخصص
+      theme: AppTheme.lightTheme,
       home: const SplashScreen(),
     );
   }

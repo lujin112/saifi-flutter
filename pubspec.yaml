@@ -28,6 +28,9 @@ dependencies:
   # لربط البوت (Dialogflow)
   http: ^1.2.0
   googleapis_auth: ^2.0.0
+  firebase_core: ^3.4.0
+  cloud_firestore: ^5.4.0
+  firebase_auth: ^5.2.0
 
 
 dev_dependencies:

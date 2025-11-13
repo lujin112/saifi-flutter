@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'role_selection_screen.dart';
 import 'chatbot_screen.dart';
 import 'theme.dart';
+import 'activity_details_page.dart';
 
 class HomeScreen extends StatefulWidget {
   final String userName;
@@ -187,7 +189,7 @@ class HomePage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          _buildActivitiesList(),
+          _buildActivitiesList(context),
         ],
       ),
     );
@@ -243,19 +245,19 @@ class HomePage extends StatelessWidget {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+      child: const Padding(
+        padding: EdgeInsets.all(16),
         child: Row(
           children: [
-            const Icon(Icons.search, color: AppColors.primary, size: 28),
-            const SizedBox(width: 12),
+            Icon(Icons.search, color: AppColors.primary, size: 28),
+            SizedBox(width: 12),
             Expanded(
               child: Text(
                 'Search activities...',
                 style: TextStyle(
                   fontFamily: 'RobotoMono',
                   fontSize: 15,
-                  color: Colors.grey[600],
+                  color: Colors.grey,
                 ),
               ),
             ),
@@ -288,9 +290,9 @@ class HomePage extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
+        children: [
           Row(
             children: [
               Icon(Icons.star, color: Colors.amber, size: 22),
@@ -321,94 +323,153 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildActivitiesList() {
-    final activities = [
-      {'title': 'Football', 'icon': Icons.sports_soccer, 'age': 'Ages 6-12', 'details': 'Near you • 2km'},
-      {'title': 'Swimming', 'icon': Icons.pool, 'age': 'Ages 5-10', 'details': 'Popular • 5km'},
-      {'title': 'Art Class', 'icon': Icons.brush, 'age': 'Ages 4-8', 'details': 'Creative • 3km'},
-      {'title': 'Music', 'icon': Icons.music_note, 'age': 'Ages 7-14', 'details': 'New • 4km'},
-    ];
-
+  // ================== FIRESTORE ACTIVITIES LIST ==================
+  Widget _buildActivitiesList(BuildContext context) {
     return SizedBox(
       height: 210,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: activities.length,
-        itemBuilder: (context, i) {
-          final act = activities[i];
-          return _buildActivityCard(
-            act['title'] as String,
-            act['icon'] as IconData,
-            act['age'] as String,
-            act['details'] as String,
+      child: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance.collection('providers').snapshots(),
+        builder: (context, providerSnapshot) {
+          if (providerSnapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            );
+          }
+
+          if (!providerSnapshot.hasData ||
+              providerSnapshot.data!.docs.isEmpty) {
+            return const Center(
+              child: Text(
+                "No providers found",
+                style: TextStyle(
+                  fontFamily: 'RobotoMono',
+                  color: AppColors.textDark,
+                  fontSize: 16,
+                ),
+              ),
+            );
+          }
+
+          final providers = providerSnapshot.data!.docs;
+
+          return FutureBuilder<List<Map<String, dynamic>>>(
+            future: _fetchAllActivities(providers),
+            builder: (context, activitySnapshot) {
+              if (!activitySnapshot.hasData) {
+                return const Center(
+                  child: CircularProgressIndicator(color: AppColors.primary),
+                );
+              }
+
+              final activities = activitySnapshot.data!;
+
+              if (activities.isEmpty) {
+                return const Center(
+                  child: Text(
+                    "No activities available",
+                    style: TextStyle(
+                      fontFamily: 'RobotoMono',
+                      color: AppColors.textDark,
+                      fontSize: 16,
+                    ),
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: activities.length,
+                itemBuilder: (context, i) {
+                  final data = activities[i];
+
+                  return _buildActivityCard(
+                    data['title'] ?? 'No Title',
+                    data,
+                    context,
+                  );
+                },
+              );
+            },
           );
         },
       ),
     );
   }
 
+  Future<List<Map<String, dynamic>>> _fetchAllActivities(
+      List<QueryDocumentSnapshot> providers) async {
+    List<Map<String, dynamic>> all = [];
+
+    for (var provider in providers) {
+      final actSnapshot =
+          await provider.reference.collection('activities').get();
+
+      for (var a in actSnapshot.docs) {
+        all.add(a.data());
+      }
+    }
+
+    return all;
+  }
+
+  // ================== ACTIVITY CARD ==================
   Widget _buildActivityCard(
-      String title, IconData icon, String ageRange, String details) {
-    return Container(
-      width: 160,
-      margin: const EdgeInsets.only(right: 15),
-      child: Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        elevation: 5,
-        shadowColor: AppColors.primary.withOpacity(0.25),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColors.primary.withOpacity(0.15),
-                      AppColors.primary.withOpacity(0.05)
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+      String title, Map<String, dynamic> fullData, BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ActivityDetailsPage(data: fullData),
+          ),
+        );
+      },
+      child: Container(
+        width: 160,
+        margin: const EdgeInsets.only(right: 15),
+        child: Card(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          elevation: 5,
+          shadowColor: AppColors.primary.withOpacity(0.25),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.15),
+                    shape: BoxShape.circle,
                   ),
-                  borderRadius: BorderRadius.circular(10),
+                  child: const Icon(
+                    Icons.local_activity_rounded,
+                    size: 40,
+                    color: AppColors.primary,
+                  ),
                 ),
-                child: Icon(icon, size: 30, color: AppColors.primary),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontFamily: 'RobotoMono',
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textDark,
+                const SizedBox(height: 15),
+                Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'RobotoMono',
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textDark,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                ageRange,
-                style: const TextStyle(
-                    fontFamily: 'RobotoMono', fontSize: 13, color: Colors.grey),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                details,
-                style: const TextStyle(
-                  fontFamily: 'RobotoMono',
-                  fontSize: 12,
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 }
+
 
 // ======================== PROFILE PAGE ===========================
 class ProfilePage extends StatelessWidget {
