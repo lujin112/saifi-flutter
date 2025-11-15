@@ -267,6 +267,7 @@ class HomePage extends StatelessWidget {
     );
   }
 
+  // ================= FIXED THIS SECTION =================
   Widget _buildRecommendationsSection() {
     return Container(
       width: double.infinity,
@@ -290,20 +291,23 @@ class HomePage extends StatelessWidget {
           ),
         ],
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+        mainAxisSize: MainAxisSize.min,
+        children: const [
           Row(
             children: [
               Icon(Icons.star, color: Colors.amber, size: 22),
               SizedBox(width: 8),
-              Text(
-                'Perfect matches for your family',
-                style: TextStyle(
-                  fontFamily: 'RobotoMono',
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textDark,
+              Expanded(
+                child: Text(
+                  'Perfect matches for your family',
+                  style: TextStyle(
+                    fontFamily: 'RobotoMono',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textDark,
+                  ),
                 ),
               ),
             ],

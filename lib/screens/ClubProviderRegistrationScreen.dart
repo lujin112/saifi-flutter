@@ -6,6 +6,9 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:crypto/crypto.dart';
+import 'dart:convert';
+
 import 'activity_registration_screen.dart';
 
 class ClubProviderRegistrationScreen extends StatefulWidget {
@@ -24,12 +27,12 @@ class _ClubProviderRegistrationScreenState
 
   final _formKey = GlobalKey<FormState>();
 
-  final TextEditingController _providerNameController =
-      TextEditingController();
+  final TextEditingController _providerNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _crnController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  bool _isEmailMode = true;
 
   final List<String> _emailDomains = [
     '@gmail.com',
@@ -50,11 +53,9 @@ class _ClubProviderRegistrationScreenState
       duration: const Duration(milliseconds: 700),
     )..repeat(reverse: true);
 
-    _arrowAnimation =
-        Tween<double>(begin: 0, end: 10).animate(CurvedAnimation(
-      parent: _arrowController,
-      curve: Curves.easeInOut,
-    ));
+    _arrowAnimation = Tween<double>(begin: 0, end: 10).animate(
+      CurvedAnimation(parent: _arrowController, curve: Curves.easeInOut),
+    );
   }
 
   @override
@@ -62,10 +63,16 @@ class _ClubProviderRegistrationScreenState
     _arrowController.dispose();
     _providerNameController.dispose();
     _emailController.dispose();
-    _passwordController.dispose();
     _phoneController.dispose();
-    _crnController.dispose();
+    _passwordController.dispose();
     super.dispose();
+  }
+
+  // PASSWORD HASH FUNCTION
+  String hashPassword(String password) {
+    final bytes = utf8.encode(password);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
   }
 
   Future<void> _getLocation() async {
@@ -80,8 +87,8 @@ class _ClubProviderRegistrationScreenState
     try {
       Position position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high);
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-          position.latitude, position.longitude);
+      List<Placemark> placemarks =
+          await placemarkFromCoordinates(position.latitude, position.longitude);
 
       setState(() {
         _currentPosition = position;
@@ -108,24 +115,31 @@ class _ClubProviderRegistrationScreenState
     final firestore = FirebaseFirestore.instance;
 
     try {
-      // 1. Create provider account
-      UserCredential userCredential =
-          await auth.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
+      UserCredential userCredential;
+
+      if (_isEmailMode) {
+        userCredential = await auth.createUserWithEmailAndPassword(
+          email: _emailController.text.trim(),
+          password: _passwordController.text.trim(),
+        );
+      } else {
+        userCredential = await auth.createUserWithEmailAndPassword(
+          email: "${_phoneController.text.trim()}@provider.saifi",
+          password: _passwordController.text.trim(),
+        );
+      }
 
       String uid = userCredential.user!.uid;
 
-      // 2. Prepare provider data
       Map<String, dynamic> providerData = {
         'provider_id': uid,
         'provider_name': _providerNameController.text.trim(),
-        'email': _emailController.text.trim(),
+        'email': _isEmailMode ? _emailController.text.trim() : null,
         'phone_number': _phoneController.text.trim(),
-        'crn': _crnController.text.trim().isEmpty
-            ? null
-            : _crnController.text.trim(),
+
+        // PASSWORD HERE (HASHED)
+        'password_hash': hashPassword(_passwordController.text.trim()),
+
         'location': _currentPosition == null
             ? null
             : {
@@ -136,10 +150,8 @@ class _ClubProviderRegistrationScreenState
         'created_at': DateTime.now(),
       };
 
-      // 3. Save to Firestore
       await firestore.collection('providers').doc(uid).set(providerData);
 
-      // 4. Navigate to next screen
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -170,7 +182,13 @@ class _ClubProviderRegistrationScreenState
             key: _formKey,
             child: Column(
               children: [
-                // Provider Name
+                Image.asset(
+                  "assets/provider.png",
+                  height: 140,
+                  fit: BoxFit.contain,
+                ),
+                const SizedBox(height: 20),
+
                 TextFormField(
                   controller: _providerNameController,
                   decoration: const InputDecoration(
@@ -180,160 +198,91 @@ class _ClubProviderRegistrationScreenState
                   validator: (value) =>
                       value!.isEmpty ? 'Please enter provider name' : null,
                 ),
-                const SizedBox(height: 15),
+                const SizedBox(height: 20),
 
-                // Email
-                TextFormField(
-                  controller: _emailController,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter email';
-                    }
-                    if (!_emailDomains
-                        .any((domain) => value.endsWith(domain))) {
-                      return 'Email must end with ${_emailDomains.join(", ")}';
-                    }
-                    return null;
-                  },
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text("Email"),
+                    Switch(
+                      value: !_isEmailMode,
+                      activeColor: const Color(0xFF80C4C0),
+                      onChanged: (v) {
+                        setState(() => _isEmailMode = !v);
+                      },
+                    ),
+                    const Text("Phone"),
+                  ],
                 ),
+                const SizedBox(height: 10),
+
+                if (_isEmailMode)
+                  TextFormField(
+                    controller: _emailController,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter email';
+                      }
+                      if (!_emailDomains
+                          .any((domain) => value.endsWith(domain))) {
+                        return 'Email must end with ${_emailDomains.join(", ")}';
+                      }
+                      return null;
+                    },
+                  )
+                else
+                  TextFormField(
+                    controller: _phoneController,
+                    decoration: const InputDecoration(
+                      labelText: 'Phone Number',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.phone,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(10),
+                    ],
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Enter phone number';
+                      }
+                      if (value.length != 10) {
+                        return 'Phone must be 10 digits';
+                      }
+                      return null;
+                    },
+                  ),
+
                 const SizedBox(height: 15),
 
-                // Password
                 TextFormField(
                   controller: _passwordController,
                   obscureText: true,
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     labelText: 'Password',
-                    border: const OutlineInputBorder(),
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.info_outline,
-                          color: Color(0xFF80C4C0)),
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: const Text('Password Requirements'),
-                            content: const Text(
-                              '- At least 8 characters\n'
-                              '- At least 1 uppercase letter\n'
-                              '- At least 1 lowercase letter\n'
-                              '- At least 1 number',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('OK'),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter password';
-                    }
-                    if (value.length < 8) {
-                      return 'Password must be at least 8 characters';
-                    }
-                    if (!RegExp(r'[A-Z]').hasMatch(value)) {
-                      return 'Password must contain an uppercase letter';
-                    }
-                    if (!RegExp(r'[a-z]').hasMatch(value)) {
-                      return 'Password must contain a lowercase letter';
-                    }
-                    if (!RegExp(r'[0-9]').hasMatch(value)) {
-                      return 'Password must contain a number';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 15),
-
-                // Phone
-                TextFormField(
-                  controller: _phoneController,
-                  decoration: const InputDecoration(
-                    labelText: 'Phone Number',
                     border: OutlineInputBorder(),
                   ),
-                  keyboardType: TextInputType.phone,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(10)
-                  ],
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter phone number';
-                    }
-                    if (value.length != 10) {
-                      return 'Phone must be exactly 10 digits';
-                    }
-                    return null;
-                  },
+                  validator: (v) =>
+                      v != null && v.length >= 8 ? null : 'Invalid password',
                 ),
-                const SizedBox(height: 15),
 
-                // CRN
-                TextFormField(
-                  controller: _crnController,
-                  decoration: const InputDecoration(
-                    labelText:
-                        'Commercial Registration Number (optional)',
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(10)
-                  ],
-                  validator: (value) {
-                    if (value != null &&
-                        value.isNotEmpty &&
-                        value.length != 10) {
-                      return 'CRN must be exactly 10 digits if provided';
-                    }
-                    return null;
-                  },
-                ),
                 const SizedBox(height: 20),
 
-                if (_currentPosition != null)
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
-                        children: [
-                          const Text("Selected Location:",
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold)),
-                          Text(
-                              "Lat: ${_currentPosition!.latitude}, Lng: ${_currentPosition!.longitude}"),
-                          Text("Address: $_locationName"),
-                        ],
-                      ),
-                    ),
-                  ),
                 Row(
                   children: [
                     Expanded(
                       child: Text(
                         _locationName,
-                        style: const TextStyle(
-                            fontSize: 14, color: Colors.grey),
+                        style: const TextStyle(fontSize: 14, color: Colors.grey),
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.location_on,
-                          color: Colors.red),
+                      icon: const Icon(Icons.location_on, color: Colors.red),
                       onPressed: _getLocation,
                     ),
                   ],
@@ -348,8 +297,8 @@ class _ClubProviderRegistrationScreenState
                       animation: _arrowAnimation,
                       builder: (context, child) {
                         return Padding(
-                          padding: EdgeInsets.only(
-                              right: _arrowAnimation.value),
+                          padding:
+                              EdgeInsets.only(right: _arrowAnimation.value),
                           child: const Icon(
                             Icons.arrow_forward,
                             size: 48,

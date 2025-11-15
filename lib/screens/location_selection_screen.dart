@@ -16,7 +16,7 @@ class LocationSelectionScreen extends StatefulWidget {
 class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
   Position? _currentPosition;
   bool _isLoading = false;
-  bool _locationConfirmed = false;
+
   GoogleMapController? _mapController;
   Set<Marker> _markers = {};
 
@@ -27,52 +27,52 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
       bool enabled = await Geolocator.isLocationServiceEnabled();
       if (!enabled) await Geolocator.openLocationSettings();
 
-      Position? last = await Geolocator.getLastKnownPosition();
-      if (last != null) {
-        _currentPosition = last;
-        _updateMapMarker();
-      }
-
       Position now = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.best,
         timeLimit: const Duration(seconds: 8),
       );
 
-      _currentPosition = now;
-      _updateMapMarker();
+      setState(() {
+        _currentPosition = now;
+        _markers = {
+          Marker(
+            markerId: const MarkerId("current"),
+            position: LatLng(now.latitude, now.longitude),
+          )
+        };
+      });
+
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(
+          LatLng(now.latitude, now.longitude),
+          16,
+        ),
+      );
     } catch (_) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Couldn't detect location"), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text("Couldn't detect current location"),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
-  void _updateMapMarker() {
-    if (_currentPosition == null) return;
-
-    setState(() {
-      _markers = {
-        Marker(
-          markerId: const MarkerId("me"),
-          position: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-        )
-      };
-    });
-
-    _mapController?.animateCamera(
-      CameraUpdate.newLatLngZoom(
-        LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-        15,
-      ),
-    );
-  }
-
   Future<void> _confirmLocation() async {
-    if (_currentPosition == null) return;
+    if (_currentPosition == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please get your current location first"),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     final uid = FirebaseAuth.instance.currentUser!.uid;
+
     await FirebaseFirestore.instance.collection("parents").doc(uid).update({
       "location": {
         "lat": _currentPosition!.latitude,
@@ -80,11 +80,6 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
       }
     });
 
-    setState(() => _locationConfirmed = true);
-  }
-
-  void _goHome() async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
     final doc = await FirebaseFirestore.instance.collection("parents").doc(uid).get();
     final data = doc.data() ?? {};
     String name = "${data["first_name"] ?? ""} ${data["last_name"] ?? ""}".trim();
@@ -106,48 +101,50 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
         ),
-        body: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-              ShinyButton(
-                text: _isLoading ? "Locating..." : "Use Current Location",
+        body: Column(
+          children: [
+            const SizedBox(height: 20),
+
+            // زر تحديد الموقع
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: ShinyButton(
+                text: _isLoading ? "Finding your location..." : "Use Current Location",
                 onPressed: () {
                   if (_isLoading) return;
                   _getCurrentLocation();
                 },
               ),
+            ),
 
-              const SizedBox(height: 20),
+            const SizedBox(height: 10),
 
-              Expanded(
-                child: GoogleMap(
-                  onMapCreated: (c) => _mapController = c,
-                  initialCameraPosition: const CameraPosition(
-                    target: LatLng(24.7136, 46.6753),
-                    zoom: 10,
-                  ),
-                  markers: _markers,
-                  myLocationEnabled: true,
+            // الخريطة
+            Expanded(
+              child: GoogleMap(
+                onMapCreated: (c) => _mapController = c,
+                initialCameraPosition: const CameraPosition(
+                  target: LatLng(24.7136, 46.6753), // Riyadh default
+                  zoom: 10,
                 ),
+                markers: _markers,
+                myLocationEnabled: true,
               ),
+            ),
 
-              const SizedBox(height: 20),
+            const SizedBox(height: 15),
 
-              ShinyButton(
+            // زر تأكيد الموقع
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: ShinyButton(
                 text: "Confirm Location",
                 onPressed: _confirmLocation,
               ),
+            ),
 
-              if (_locationConfirmed) ...[
-                const SizedBox(height: 20),
-                ShinyButton(
-                  text: "Go Home",
-                  onPressed: _goHome,
-                ),
-              ]
-            ],
-          ),
+            const SizedBox(height: 20),
+          ],
         ),
       ),
     );

@@ -12,6 +12,8 @@ dependencies:
   flutter:
     sdk: flutter
 
+  
+  url_launcher: ^6.2.4
   # أيقونات
   cupertino_icons: ^1.0.2
 
@@ -28,9 +30,12 @@ dependencies:
   # لربط البوت (Dialogflow)
   http: ^1.2.0
   googleapis_auth: ^2.0.0
+
   firebase_core: ^3.4.0
   cloud_firestore: ^5.4.0
   firebase_auth: ^5.2.0
+  crypto: ^3.0.7
+  
 
 
 dev_dependencies:
@@ -50,5 +55,6 @@ flutter:
     - assets/logo.png
     - assets/home.png
     - assets/parentReg.png
+    - assets/provider.png
     - assets/saifibot.json
 

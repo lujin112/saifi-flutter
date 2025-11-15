@@ -16,20 +16,30 @@ class ChildInfoScreen extends StatefulWidget {
 
 class _ChildInfoScreenState extends State<ChildInfoScreen> {
   final Map<int, DateTime?> _birthdays = {};
-  final Map<int, String> _ids = {};
   final Map<int, String> _notes = {};
   final Map<int, Set<String>> _selectedInterests = {};
   bool _isSaving = false;
 
-  static const Map<String, List<String>> _interestsMap = {
-    'Sports': ['Football', 'Basketball', 'Tennis', 'Swimming', 'Volleyball', 'Gymnastics'],
-    'Languages': ['English', 'French', 'Chinese', 'Spanish', 'Arabic'],
-    'Self-defense': ['Karate', 'Taekwondo', 'Judo', 'Boxing', 'Kung Fu'],
-    'Arts': ['Painting', 'Drawing', 'Music', 'Dance', 'Photography'],
-    'Literature & Communication': ['Public Speaking', 'Writing', 'Storytelling', 'Debate Club', 'Theater'],
-    'Technology': ['Coding', 'Robotics', 'Game Design', '3D Printing', 'Electronics'],
-    'Clubs & Activities': ['Science Club', 'Drama Club', 'Debate Club', 'Leadership'],
+  static const Map<String, IconData> _interestTypes = {
+    'Sports': Icons.sports_soccer,
+    'Technology': Icons.memory,
+    'Swimming': Icons.pool,
+    'Art': Icons.brush,
+    'Language': Icons.language,
+    'Self-Defense': Icons.sports_mma,
   };
+
+  int calculateAge(DateTime birthDate) {
+    DateTime today = DateTime.now();
+    int age = today.year - birthDate.year;
+
+    if (today.month < birthDate.month ||
+        (today.month == birthDate.month && today.day < birthDate.day)) {
+      age--;
+    }
+
+    return age;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -79,15 +89,24 @@ class _ChildInfoScreenState extends State<ChildInfoScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("${child['firstName']} ${child['lastName']} (${child['gender']})",
-              style: const TextStyle(fontFamily: 'RobotoMono', fontSize: 16, fontWeight: FontWeight.w600),
+            Text(
+              "${child['firstName']} ${child['lastName']} (${child['gender']})"
+              "${_birthdays[index] != null ? " - Age: ${calculateAge(_birthdays[index]!)}" : ""}",
+              style: const TextStyle(
+                fontFamily: 'RobotoMono',
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
             ),
 
             const SizedBox(height: 15),
 
             TextFormField(
               readOnly: true,
-              decoration: const InputDecoration(labelText: 'Birthday', prefixIcon: Icon(Icons.cake)),
+              decoration: const InputDecoration(
+                labelText: 'Birthday',
+                prefixIcon: Icon(Icons.cake),
+              ),
               onTap: () async {
                 final picked = await showDatePicker(
                   context: context,
@@ -106,29 +125,43 @@ class _ChildInfoScreenState extends State<ChildInfoScreen> {
 
             const SizedBox(height: 15),
 
-            TextFormField(
-              decoration: const InputDecoration(labelText: 'Child ID', prefixIcon: Icon(Icons.badge)),
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              onChanged: (v) => _ids[index] = v,
+            // Interests
+            const Text(
+              "Interests:",
+              style: TextStyle(
+                fontFamily: 'RobotoMono',
+                fontWeight: FontWeight.w600,
+              ),
             ),
 
-            const SizedBox(height: 15),
+            const SizedBox(height: 6),
 
-            const Text("Interests:", style: TextStyle(fontFamily: 'RobotoMono', fontWeight: FontWeight.w600)),
             Wrap(
-              spacing: 8,
-              children: _interestsMap.entries.expand((group) {
-                return group.value.map((interest) {
-                  final selected = _selectedInterests[index]!.contains(interest);
-                  return FilterChip(
-                    label: Text(interest),
-                    selected: selected,
-                    onSelected: (s) => setState(() {
-                      s ? _selectedInterests[index]!.add(interest) : _selectedInterests[index]!.remove(interest);
-                    }),
-                  );
-                });
+              spacing: 10,
+              children: _interestTypes.entries.map((entry) {
+                final interest = entry.key;
+                final icon = entry.value;
+
+                final selected = _selectedInterests[index]!.contains(interest);
+
+                return FilterChip(
+                  label: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(icon, size: 18),
+                      const SizedBox(width: 6),
+                      Text(interest),
+                    ],
+                  ),
+                  selected: selected,
+                  onSelected: (s) {
+                    setState(() {
+                      s
+                          ? _selectedInterests[index]!.add(interest)
+                          : _selectedInterests[index]!.remove(interest);
+                    });
+                  },
+                );
               }).toList(),
             ),
 
@@ -156,12 +189,16 @@ class _ChildInfoScreenState extends State<ChildInfoScreen> {
       final c = widget.children[i];
       final ref = parent.collection("children").doc();
 
+      // حساب العمر
+      final age = _birthdays[i] != null ? calculateAge(_birthdays[i]!) : null;
+
       batch.set(ref, {
         "first_name": c['firstName'],
         "last_name": c['lastName'],
         "gender": c['gender'],
-        "birthday": _birthdays[i] != null ? Timestamp.fromDate(_birthdays[i]!) : null,
-        "child_id": _ids[i] ?? "",
+        "birthday":
+            _birthdays[i] != null ? Timestamp.fromDate(_birthdays[i]!) : null,
+        "age": age,
         "interests": _selectedInterests[i]!.toList(),
         "notes": _notes[i] ?? "",
         "created_at": FieldValue.serverTimestamp(),
@@ -172,6 +209,9 @@ class _ChildInfoScreenState extends State<ChildInfoScreen> {
 
     setState(() => _isSaving = false);
 
-    Navigator.push(context, MaterialPageRoute(builder: (_) => const LocationSelectionScreen()));
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const LocationSelectionScreen()),
+    );
   }
 }
