@@ -63,17 +63,52 @@ class ActivityDetailsPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeroCard(title, type, status),
+            // =============== HERO CARD + PROVIDER INFO ===============
+            if (providerId.isNotEmpty)
+              FutureBuilder<DocumentSnapshot>(
+                future: FirebaseFirestore.instance
+                    .collection("providers")
+                    .doc(providerId)
+                    .get(),
+                builder: (context, snap) {
+                  if (!snap.hasData) {
+                    return const Padding(
+                      padding: EdgeInsets.all(10),
+                      child: Text(
+                        "Loading provider info...",
+                        style: TextStyle(fontFamily: 'RobotoMono'),
+                      ),
+                    );
+                  }
+
+                  final providerData = snap.data!.data() as Map<String, dynamic>?;
+
+                  if (providerData == null) {
+                    return _buildHeroCard(title, type, status, "Provider");
+                  }
+
+                  final providerName = providerData["name"] ??
+                      providerData["provider_name"] ??
+                      "Provider";
+
+                  return _buildHeroCard(title, type, status, providerName);
+                },
+              )
+            else
+              _buildHeroCard(title, type, status, "Provider"),
 
             const SizedBox(height: 20),
 
+            // ============================ INFO TAGS ============================
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
                 _smallTag("Age: $ageRange", Icons.group),
-                if (capacity != null) _smallTag("Capacity: $capacity", Icons.people_alt_rounded),
-                if (duration != null) _smallTag("Duration: $duration Hours", Icons.schedule),
+                if (capacity != null)
+                  _smallTag("Capacity: $capacity", Icons.people_alt_rounded),
+                if (duration != null)
+                  _smallTag("Duration: $duration Hours", Icons.schedule),
               ],
             ),
 
@@ -86,7 +121,9 @@ class ActivityDetailsPage extends StatelessWidget {
                 Expanded(child: _infoCard("End date", endDate, Icons.event_rounded)),
               ],
             ),
+
             const SizedBox(height: 12),
+
             Row(
               children: [
                 Expanded(child: _infoCard("Price", price != null ? "$price SAR" : "-", Icons.payments_rounded)),
@@ -106,22 +143,25 @@ class ActivityDetailsPage extends StatelessWidget {
                 color: AppColors.textDark,
               ),
             ),
-            const SizedBox(height: 10),
 
+            const SizedBox(height: 10),
             _buildDescription(description),
 
-            // ============================
-            //       PROVIDER LOCATION
-            // ============================
+            // ============================ PROVIDER LOCATION ============================
             if (providerId.isNotEmpty)
               FutureBuilder<DocumentSnapshot>(
-                future: FirebaseFirestore.instance.collection("providers").doc(providerId).get(),
+                future: FirebaseFirestore.instance
+                    .collection("providers")
+                    .doc(providerId)
+                    .get(),
                 builder: (context, snap) {
                   if (!snap.hasData) {
                     return const Padding(
                       padding: EdgeInsets.all(10),
-                      child: Text("Loading provider location...",
-                          style: TextStyle(fontFamily: 'RobotoMono')),
+                      child: Text(
+                        "Loading provider location...",
+                        style: TextStyle(fontFamily: 'RobotoMono'),
+                      ),
                     );
                   }
 
@@ -133,27 +173,11 @@ class ActivityDetailsPage extends StatelessWidget {
 
                   final loc = providerData['location'];
 
-                  // ============================
-                  //   AUTO-DETECT FIELD NAMES
-                  // ============================
-
                   double lat = double.parse(
-                    (loc['latitude'] ??
-                     loc['lat'] ??
-                     loc['Lat'] ??
-                     loc['LAT']).toString(),
-                  );
-
+                      (loc['latitude'] ?? loc['lat']).toString());
                   double lng = double.parse(
-                    (loc['longitude'] ??
-                     loc['lng'] ??
-                     loc['long'] ??
-                     loc['lang'] ??
-                     loc['Lon'] ??
-                     loc['LNG']).toString(),
-                  );
-
-                  final address = loc['address'] ?? "Unknown location";
+                      (loc['longitude'] ?? loc['lng']).toString());
+                  String address = loc['address'] ?? "Unknown location";
 
                   return _buildProviderLocation(lat, lng, address);
                 },
@@ -169,10 +193,10 @@ class ActivityDetailsPage extends StatelessWidget {
   }
 
   // ===================================================
-  //                     UI WIDGETS
+  //                    UI WIDGETS
   // ===================================================
 
-  Widget _buildHeroCard(String title, String type, String status) {
+  Widget _buildHeroCard(String title, String type, String status, String providerName) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
@@ -194,6 +218,7 @@ class ActivityDetailsPage extends StatelessWidget {
           ),
         ],
       ),
+
       child: Row(
         children: [
           Container(
@@ -208,7 +233,9 @@ class ActivityDetailsPage extends StatelessWidget {
               color: AppColors.primary,
             ),
           ),
+
           const SizedBox(width: 16),
+
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -224,10 +251,22 @@ class ActivityDetailsPage extends StatelessWidget {
                     color: AppColors.textDark,
                   ),
                 ),
+
+                const SizedBox(height: 6),
+
+                Text(
+                  providerName,
+                  style: const TextStyle(
+                    fontFamily: 'RobotoMono',
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
+                ),
+
                 const SizedBox(height: 8),
+
                 Wrap(
                   spacing: 8,
-                  runSpacing: 4,
                   children: [
                     _buildChip(type.toUpperCase(), Icons.category),
                     _buildChip("Status: $status", Icons.check_circle),
@@ -259,7 +298,8 @@ class ActivityDetailsPage extends StatelessWidget {
 
         GestureDetector(
           onTap: () {
-            final url = "https://www.google.com/maps/search/?api=1&query=$lat,$lng";
+            final url =
+                "https://www.google.com/maps/search/?api=1&query=$lat,$lng";
             launchUrl(Uri.parse(url));
           },
           child: Container(

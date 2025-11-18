@@ -56,5 +56,5 @@ flutter:
     - assets/home.png
     - assets/parentReg.png
     - assets/provider.png
-    - assets/saifibot.json
+    #- assets/saifibot.json
 

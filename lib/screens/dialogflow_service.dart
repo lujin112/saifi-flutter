@@ -4,7 +4,7 @@ import 'package:googleapis_auth/auth_io.dart';
 
 
 class DialogflowService {
-  final String projectId = "saifibot-sxso"; // غيّرها إذا اسم مشروعك غير
+  final String projectId = "saifibot-sxso";
 
   Future<AutoRefreshingAuthClient> _getClient() async {
     // نقرأ ملف السيرفس أكاونت من assets
