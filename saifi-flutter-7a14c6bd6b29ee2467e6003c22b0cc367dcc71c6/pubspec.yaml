@@ -1,0 +1,56 @@
+name: saifi_app
+description: Saifi summer activities app
+
+publish_to: 'none' # ما رح تنشره على pub.dev
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  url_launcher: ^6.2.5
+  # أيقونات
+  cupertino_icons: ^1.0.2
+
+  # الخرائط والموقع
+  geolocator: ^14.0.2
+  geocoding: ^4.0.0
+
+  google_maps_flutter: ^2.2.3
+  permission_handler: ^12.0.1
+
+  # أنيميشن (اللوتي)
+  lottie: ^3.1.2
+
+  # لربط البوت (Dialogflow)
+  http: ^1.2.0
+  googleapis_auth: ^2.0.0
+  firebase_core: ^3.4.0
+  cloud_firestore: ^5.4.0
+  firebase_auth: ^5.2.0
+  
+
+
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  fonts:
+    - family: RobotoMono
+      fonts:
+        - asset: assets\font\RobotoMono-VariableFont_wght.ttf
+
+  assets:
+    - assets/logo.png
+    - assets/home.png
+    - assets/parentReg.png
+    - assets/saifibot.json
+
