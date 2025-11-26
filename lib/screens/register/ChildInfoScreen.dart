@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'theme.dart';
+import '../service/theme.dart';
 import 'location_selection_screen.dart';
 
 class ChildInfoScreen extends StatefulWidget {
@@ -196,8 +196,9 @@ class _ChildInfoScreenState extends State<ChildInfoScreen> {
         "first_name": c['firstName'],
         "last_name": c['lastName'],
         "gender": c['gender'],
-        "birthday":
-            _birthdays[i] != null ? Timestamp.fromDate(_birthdays[i]!) : null,
+        "birthday": _birthdays[i] != null
+            ? Timestamp.fromDate(_birthdays[i]!)
+            : null,
         "age": age,
         "interests": _selectedInterests[i]!.toList(),
         "notes": _notes[i] ?? "",

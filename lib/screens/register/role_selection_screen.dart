@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'theme.dart';
+import '../service/theme.dart';
 import 'parent_registration_screen.dart';
-import 'ClubProviderRegistrationScreen.dart';
+import '../provider/ClubProviderRegistrationScreen.dart';
 import 'login_screen.dart';
 
 class RoleSelectionScreen extends StatefulWidget {
@@ -33,21 +33,21 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
       curve: const Interval(0.0, 0.45, curve: Curves.easeOut),
     );
 
-    _slideLogin = Tween<Offset>(
-      begin: const Offset(0, 0.15),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(0.25, 0.65, curve: Curves.easeOutCubic),
-    ));
+    _slideLogin = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _controller,
+            curve: const Interval(0.25, 0.65, curve: Curves.easeOutCubic),
+          ),
+        );
 
-    _slideOptions = Tween<Offset>(
-      begin: const Offset(0, 0.2),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(0.45, 1.0, curve: Curves.easeOutCubic),
-    ));
+    _slideOptions = Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _controller,
+            curve: const Interval(0.45, 1.0, curve: Curves.easeOutCubic),
+          ),
+        );
 
     _fadeOptions = CurvedAnimation(
       parent: _controller,
@@ -80,7 +80,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                 children: [
                   Image.asset(
                     'assets/home.png',
-                    height: size.height * 0.18,
+                    height: size.height * 0.30,
                     fit: BoxFit.contain,
                   ),
                   const SizedBox(height: 24),
@@ -89,7 +89,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                     opacity: _fadeHeadline,
                     child: const Text(
                       "Because every child deserves a summer to remember – easy, fast, endless possibilities with Saifi.",
-                      textAlign: TextAlign.center,
+                      textAlign: TextAlign.left,
                       style: TextStyle(
                         fontSize: 19,
                         fontWeight: FontWeight.w400,

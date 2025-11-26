@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'dialogflow_service.dart';
-import 'theme.dart';
+import '../service/dialogflow_service.dart';
+import '../service/theme.dart';
 
 class ChatbotScreen extends StatefulWidget {
   const ChatbotScreen({super.key});
