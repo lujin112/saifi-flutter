@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'theme.dart';
-import 'HomeScreen.dart';
+import '../service/theme.dart';
+import '../home/HomeScreen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -87,7 +87,6 @@ class _LoginScreenState extends State<LoginScreen>
         return;
       }
 
-      // Login success → HomeScreen
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
@@ -130,13 +129,14 @@ class _LoginScreenState extends State<LoginScreen>
             children: [
               const SizedBox(height: 40),
 
-              // Icon Animation
+              // ✅ صورة بدل أيقونة القفل
               ScaleTransition(
                 scale: _pulseAnimation,
-                child: const Icon(
-                  Icons.lock_outline,
-                  size: 90,
-                  color: AppColors.primary,
+                child: Image.asset(
+                  'assets/login.png',
+                  height: 120,
+                  width: 120,
+                  fit: BoxFit.contain,
                 ),
               ),
 
@@ -154,7 +154,6 @@ class _LoginScreenState extends State<LoginScreen>
 
               const SizedBox(height: 40),
 
-              // اختيار الدور Parent / Provider
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(
                   labelText: "Who are you?",
@@ -171,7 +170,6 @@ class _LoginScreenState extends State<LoginScreen>
 
               const SizedBox(height: 20),
 
-              // طريقة تسجيل الدخول Email أو Phone
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(
                   labelText: "Login using",
@@ -188,7 +186,6 @@ class _LoginScreenState extends State<LoginScreen>
 
               const SizedBox(height: 20),
 
-              // حقل Email أو Phone حسب الاختيار
               TextFormField(
                 controller: _identifierController,
                 decoration: InputDecoration(
@@ -208,7 +205,6 @@ class _LoginScreenState extends State<LoginScreen>
 
               const SizedBox(height: 20),
 
-              // Password
               TextFormField(
                 controller: _passwordController,
                 obscureText: true,
@@ -223,7 +219,6 @@ class _LoginScreenState extends State<LoginScreen>
 
               const SizedBox(height: 30),
 
-              // Login Button
               GestureDetector(
                 onTap: _isLoading ? null : _login,
                 child: AbsorbPointer(

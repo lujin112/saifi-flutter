@@ -5,7 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 
-import 'theme.dart';
+import '../service/theme.dart';
 import 'ChildInfoScreen.dart';
 
 class ParentRegistrationScreen extends StatefulWidget {
@@ -18,7 +18,7 @@ class ParentRegistrationScreen extends StatefulWidget {
 
 class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _idController = TextEditingController();
+
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _firstNameController = TextEditingController();
@@ -77,7 +77,7 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
                   key: _formKey,
                   child: Column(
                     children: [
-
+                      // FIRST + LAST NAME
                       Row(
                         children: [
                           Expanded(
@@ -99,26 +99,7 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
                       ),
                       const SizedBox(height: 15),
 
-                      _buildTextField(
-                        controller: _idController,
-                        label: 'ID',
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(10),
-                        ],
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter ID';
-                          }
-                          if (value.length != 10) {
-                            return 'ID must be exactly 10 digits';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 15),
-
+                      // PHONE
                       _buildTextField(
                         controller: _phoneController,
                         label: 'Phone Number',
@@ -139,6 +120,7 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
                       ),
                       const SizedBox(height: 15),
 
+                      // EMAIL
                       _buildTextField(
                         controller: _emailController,
                         label: 'Email',
@@ -155,6 +137,7 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
                       ),
                       const SizedBox(height: 15),
 
+                      // PASSWORD
                       TextFormField(
                         controller: _passwordController,
                         obscureText: true,
@@ -162,7 +145,8 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
                         decoration: InputDecoration(
                           labelText: 'Password',
                           border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -177,42 +161,43 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
                           return null;
                         },
                       ),
-
                       const SizedBox(height: 25),
 
+                      // ADD CHILD
                       ShinyButton(
                         text: "Add Child",
                         onPressed: _showAddChildDialog,
                       ),
                       const SizedBox(height: 20),
 
+                      // CHILD LIST
                       if (_children.isNotEmpty)
-                        ..._children.map(
-                          (child) => ListTile(
-                            leading: CircleAvatar(
-                              radius: 24,
-                              backgroundColor:
-                                  AppColors.primary.withOpacity(0.2),
-                              child: Icon(
-                                child['gender'] == 'Male'
-                                    ? Icons.boy_rounded
-                                    : Icons.girl_rounded,
-                                color: AppColors.primary,
-                                size: 28,
+                        ..._children.map((child) => ListTile(
+                              leading: CircleAvatar(
+                                radius: 24,
+                                backgroundColor:
+                                    AppColors.primary.withOpacity(0.2),
+                                child: Icon(
+                                  child['gender'] == 'Male'
+                                      ? Icons.boy_rounded
+                                      : Icons.girl_rounded,
+                                  color: AppColors.primary,
+                                  size: 28,
+                                ),
                               ),
-                            ),
-                            title: Text(
-                              "${child['firstName']} ${child['lastName']}",
-                              style: const TextStyle(
+                              title: Text(
+                                "${child['firstName']} ${child['lastName']}",
+                                style: const TextStyle(
                                   fontFamily: 'RobotoMono',
-                                  fontWeight: FontWeight.w600),
-                            ),
-                            subtitle: Text(
-                              "Gender: ${child['gender']}",
-                              style: const TextStyle(fontFamily: 'RobotoMono'),
-                            ),
-                          ),
-                        ),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              subtitle: Text(
+                                "Gender: ${child['gender']}",
+                                style:
+                                    const TextStyle(fontFamily: 'RobotoMono'),
+                              ),
+                            )),
 
                       const SizedBox(height: 25),
 
@@ -221,9 +206,8 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
                           Checkbox(
                             value: _acceptedTerms,
                             activeColor: AppColors.primary,
-                            onChanged: (value) {
-                              setState(() => _acceptedTerms = value ?? false);
-                            },
+                            onChanged: (value) =>
+                                setState(() => _acceptedTerms = value ?? false),
                           ),
                           const Text("Accept Terms"),
                           TextButton(
@@ -235,7 +219,6 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
                           )
                         ],
                       ),
-
                       const SizedBox(height: 20),
 
                       ShinyButton(
@@ -263,6 +246,7 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
     );
   }
 
+  // ====== TERMS POPUP FUNCTION (برّا الـ build، مو جوّا الزر) ======
   void _showTermsPopup() {
     showDialog(
       context: context,
@@ -322,7 +306,6 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
           builder: (context) => ChildInfoScreen(children: _children),
         ),
       );
-
     } catch (e) {
       _showMessage(context, "Registration Error", e.toString());
     }
@@ -351,8 +334,8 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
         filled: true,
         fillColor: AppColors.white,
       ),
-      validator:
-          validator ?? (value) =>
+      validator: validator ??
+          (value) =>
               value == null || value.isEmpty ? 'Please enter $label' : null,
     );
   }
@@ -394,8 +377,7 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
                   DropdownMenuItem(value: 'Female', child: Text('Female')),
                 ],
                 onChanged: (value) => selectedGender = value,
-                validator: (value) =>
-                    value == null ? 'Select gender' : null,
+                validator: (value) => value == null ? 'Select gender' : null,
               ),
             ],
           ),
@@ -444,7 +426,6 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
 
   @override
   void dispose() {
-    _idController.dispose();
     _phoneController.dispose();
     _emailController.dispose();
     _firstNameController.dispose();

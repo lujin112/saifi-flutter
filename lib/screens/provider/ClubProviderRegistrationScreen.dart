@@ -1,8 +1,7 @@
 // club_provider_registration_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -22,8 +21,6 @@ class ClubProviderRegistrationScreen extends StatefulWidget {
 class _ClubProviderRegistrationScreenState
     extends State<ClubProviderRegistrationScreen>
     with SingleTickerProviderStateMixin {
-  Position? _currentPosition;
-  String _locationName = "No location selected";
 
   final _formKey = GlobalKey<FormState>();
 
@@ -31,6 +28,7 @@ class _ClubProviderRegistrationScreenState
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
 
   bool _isEmailMode = true;
 
@@ -44,6 +42,10 @@ class _ClubProviderRegistrationScreenState
 
   late AnimationController _arrowController;
   late Animation<double> _arrowAnimation;
+
+  GoogleMapController? _mapController;
+  LatLng? _selectedLatLng;
+  String _locationName = "No location selected";
 
   @override
   void initState() {
@@ -65,45 +67,40 @@ class _ClubProviderRegistrationScreenState
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
-  // PASSWORD HASH FUNCTION
+  // 🔐 PASSWORD HASH FUNCTION
   String hashPassword(String password) {
     final bytes = utf8.encode(password);
     final digest = sha256.convert(bytes);
     return digest.toString();
   }
 
-  Future<void> _getLocation() async {
-    final status = await Permission.location.request();
-    if (!status.isGranted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Location permission denied")),
-      );
-      return;
-    }
+  // 🔍 البحث عن الموقع بالاسم
+  Future<void> _searchLocation() async {
+    if (_searchController.text.isEmpty) return;
 
     try {
-      Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high);
-      List<Placemark> placemarks =
-          await placemarkFromCoordinates(position.latitude, position.longitude);
+      List<Location> locations =
+          await locationFromAddress(_searchController.text);
 
-      setState(() {
-        _currentPosition = position;
-        if (placemarks.isNotEmpty) {
-          final place = placemarks.first;
-          _locationName =
-              "${place.street ?? ''}, ${place.locality ?? ''}, ${place.administrativeArea ?? ''}";
-        } else {
-          _locationName =
-              "Lat: ${position.latitude}, Lng: ${position.longitude}";
-        }
-      });
+      if (locations.isNotEmpty) {
+        final loc = locations.first;
+
+        setState(() {
+          _selectedLatLng = LatLng(loc.latitude, loc.longitude);
+          _locationName = _searchController.text;
+        });
+
+        _mapController?.animateCamera(
+          CameraUpdate.newLatLng(_selectedLatLng!),
+        );
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Error detecting location")),
+        const SnackBar(content: Text("Location not found")),
       );
     }
   }
@@ -136,15 +133,12 @@ class _ClubProviderRegistrationScreenState
         'provider_name': _providerNameController.text.trim(),
         'email': _isEmailMode ? _emailController.text.trim() : null,
         'phone_number': _phoneController.text.trim(),
-
-        // PASSWORD HERE (HASHED)
         'password_hash': hashPassword(_passwordController.text.trim()),
-
-        'location': _currentPosition == null
+        'location': _selectedLatLng == null
             ? null
             : {
-                'latitude': _currentPosition!.latitude,
-                'longitude': _currentPosition!.longitude,
+                'latitude': _selectedLatLng!.latitude,
+                'longitude': _selectedLatLng!.longitude,
                 'address': _locationName,
               },
         'created_at': DateTime.now(),
@@ -184,7 +178,7 @@ class _ClubProviderRegistrationScreenState
               children: [
                 Image.asset(
                   "assets/provider.png",
-                  height: 140,
+                  height: 200,
                   fit: BoxFit.contain,
                 ),
                 const SizedBox(height: 20),
@@ -273,20 +267,80 @@ class _ClubProviderRegistrationScreenState
 
                 const SizedBox(height: 20),
 
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _locationName,
-                        style: const TextStyle(fontSize: 14, color: Colors.grey),
-                      ),
+                // 🔍 البحث عن الموقع
+                TextFormField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    labelText: "Search location",
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.search),
+                      onPressed: _searchLocation,
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.location_on, color: Colors.red),
-                      onPressed: _getLocation,
-                    ),
-                  ],
+                  ),
                 ),
+
+                const SizedBox(height: 12),
+
+                // 🗺️ الخريطة المصغرة
+                Container(
+                  height: 200,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: GoogleMap(
+                      initialCameraPosition: const CameraPosition(
+                        target: LatLng(24.7136, 46.6753), // الرياض
+                        zoom: 12,
+                      ),
+                      onMapCreated: (controller) {
+                        _mapController = controller;
+                      },
+                      markers: _selectedLatLng == null
+                          ? {}
+                          : {
+                              Marker(
+                                markerId: const MarkerId("selected"),
+                                position: _selectedLatLng!,
+                              ),
+                            },
+                      onTap: (latLng) async {
+                        List<Placemark> placemarks =
+                            await placemarkFromCoordinates(
+                          latLng.latitude,
+                          latLng.longitude,
+                        );
+
+                        setState(() {
+                          _selectedLatLng = latLng;
+                          if (placemarks.isNotEmpty) {
+                            final p = placemarks.first;
+                            _locationName =
+                                "${p.street ?? ''}, ${p.locality ?? ''}";
+                          } else {
+                            _locationName =
+                                "Lat: ${latLng.latitude}, Lng: ${latLng.longitude}";
+                          }
+                        });
+                      },
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    _locationName,
+                    style:
+                        const TextStyle(fontSize: 13, color: Colors.grey),
+                  ),
+                ),
+
                 const SizedBox(height: 30),
 
                 Align(

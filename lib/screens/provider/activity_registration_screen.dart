@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'theme.dart';
-import 'ActivityWelcomeScreen.dart';
+import '../service/theme.dart';
+import 'activity_welcome_screen.dart';
 
 class ActivityRegistrationScreen extends StatefulWidget {
   const ActivityRegistrationScreen({super.key});
@@ -70,8 +70,6 @@ class _ActivityRegistrationScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              
-              // -------- Title --------
               const Text(
                 'Create New Activity',
                 style: TextStyle(
@@ -83,7 +81,6 @@ class _ActivityRegistrationScreenState
               ),
               const SizedBox(height: 20),
 
-              // -------- Activity Details --------
               _buildSectionTitle("Basic Details"),
               _buildInput(_titleController, 'Activity Title', Icons.title),
               const SizedBox(height: 15),
@@ -97,13 +94,11 @@ class _ActivityRegistrationScreenState
               ),
               const SizedBox(height: 20),
 
-              // -------- Description --------
               _buildSectionTitle("Description"),
-              _buildTextArea(
-                  _descriptionController, 'Description', Icons.description_outlined),
+              _buildTextArea(_descriptionController, 'Description',
+                  Icons.description_outlined),
               const SizedBox(height: 20),
 
-              // -------- Date Section --------
               _buildSectionTitle("Duration & Dates"),
               Row(
                 children: [
@@ -136,7 +131,6 @@ class _ActivityRegistrationScreenState
               ),
               const SizedBox(height: 20),
 
-              // -------- Capacity & Price --------
               _buildSectionTitle("Capacity & Price"),
               _buildInput(_capacityController, 'Capacity',
                   Icons.people_alt_outlined,
@@ -151,12 +145,10 @@ class _ActivityRegistrationScreenState
               ),
               const SizedBox(height: 20),
 
-              // -------- Age Range --------
               _buildSectionTitle("Target Ages"),
               _buildAgeRangeSelection(),
               const SizedBox(height: 20),
 
-              // -------- Status --------
               _buildSectionTitle("Status"),
               _buildDropdown<String>(
                 label: 'Activity Status',
@@ -166,13 +158,13 @@ class _ActivityRegistrationScreenState
                 onChanged: (val) =>
                     setState(() => _selectedActivityStatus = val),
               ),
+
               const SizedBox(height: 30),
 
-              // -------- Save Button --------
               ShinyButton(
                 text: "SAVE ACTIVITY",
                 onPressed: () => _saveActivity(context),
-              ),
+              )
             ],
           ),
         ),
@@ -331,12 +323,13 @@ class _ActivityRegistrationScreenState
       lastDate: DateTime(2100),
     );
     if (picked != null) {
+      final formatted =
+          "${picked.year}-${picked.month}-${picked.day}";
       setState(() {
-        final text = "${picked.year}-${picked.month}-${picked.day}";
         if (isStart) {
-          _startDateController.text = text;
+          _startDateController.text = formatted;
         } else {
-          _endDateController.text = text;
+          _endDateController.text = formatted;
         }
       });
     }
@@ -380,11 +373,11 @@ class _ActivityRegistrationScreenState
         'activity_status': _selectedActivityStatus,
         'activity_type': _selectedActivityType,
         'created_at': DateTime.now(),
+        'provider_id': user.uid,
       };
 
       await activityDoc.set(activityData);
 
-      // Navigate to welcome screen
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -392,6 +385,7 @@ class _ActivityRegistrationScreenState
         ),
       );
 
+      _clearForm();
     } catch (e) {
       _showMessage(context, 'Error', 'Failed to save activity: $e', false);
     }
@@ -401,7 +395,7 @@ class _ActivityRegistrationScreenState
       BuildContext context, String title, String message, bool success) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (context) {
         return AlertDialog(
           title: Text(
             title,
@@ -419,9 +413,6 @@ class _ActivityRegistrationScreenState
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
               child: Text(
                 success ? 'OK' : 'TRY AGAIN',
                 style: TextStyle(
@@ -429,11 +420,26 @@ class _ActivityRegistrationScreenState
                   fontWeight: FontWeight.bold,
                 ),
               ),
-            ),
+              onPressed: () => Navigator.of(context).pop(),
+            )
           ],
         );
       },
     );
+  }
+
+  void _clearForm() {
+    _titleController.clear();
+    _descriptionController.clear();
+    _startDateController.clear();
+    _endDateController.clear();
+    _capacityController.clear();
+    _priceController.clear();
+    _selectedDuration = null;
+    _selectedAgeRanges.clear();
+    _selectedActivityStatus = null;
+    _selectedActivityType = null;
+    setState(() {});
   }
 
   @override

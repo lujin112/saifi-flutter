@@ -1,52 +1,55 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  static const Color background = Color(0xFFFCFDF2); // خلفية فاتحة
-  static const Color backgroundDark = Color(0xFFF3F6F5); // أغمق بدرجة بسيطة
-  static const Color primary = Color(0xFF80C4C0); // التركوازي الأساسي
-  static const Color primaryDark = Color(0xFF5CA6A2); // تركوازي أغمق للتدرجات
+  static const Color background = Color(0xFFFCFDF2);
+  static const Color backgroundDark = Color(0xFFF3F6F5);
+  static const Color primary = Color(0xFF80C4C0);
+  static const Color primaryDark = Color(0xFF5CA6A2);
   static const Color textDark = Color(0xFF1F3558);
   static const Color white = Colors.white;
   static const Color grey = Color(0xFFB0B9C2);
 }
 
 class AppTextStyles {
+  static const String headingFont = 'PlayfairDisplay';
+  static const String bodyFont = 'Merriweather';
+
   static const TextStyle heading = TextStyle(
     fontSize: 22,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w700,
     color: AppColors.textDark,
     height: 1.4,
-    fontFamily: 'RobotoMono', // خط يشبه الأكواد
+    fontFamily: headingFont,
   );
 
   static const TextStyle body = TextStyle(
     fontSize: 16,
     fontWeight: FontWeight.w400,
     color: AppColors.textDark,
-    height: 1.6,
-    fontFamily: 'RobotoMono',
+    height: 1.7,
+    fontFamily: bodyFont,
   );
 
   static const TextStyle button = TextStyle(
     fontSize: 16,
     fontWeight: FontWeight.w600,
     color: AppColors.white,
-    letterSpacing: 0.5,
-    fontFamily: 'RobotoMono',
+    letterSpacing: 0.4,
+    fontFamily: bodyFont,
   );
 
   static const TextStyle small = TextStyle(
     fontSize: 14,
     fontWeight: FontWeight.w400,
     color: AppColors.textDark,
-    fontFamily: 'RobotoMono',
+    fontFamily: bodyFont,
   );
 }
 
 class AppTheme {
   static ThemeData get lightTheme {
     return ThemeData(
-      fontFamily: 'RobotoMono',
+      fontFamily: AppTextStyles.bodyFont,
       scaffoldBackgroundColor: Colors.transparent,
       primaryColor: AppColors.primary,
 
@@ -57,9 +60,9 @@ class AppTheme {
         centerTitle: true,
         titleTextStyle: TextStyle(
           fontSize: 20,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
           color: AppColors.white,
-          fontFamily: 'RobotoMono',
+          fontFamily: AppTextStyles.headingFont,
         ),
       ),
 
@@ -80,14 +83,12 @@ class AppTheme {
           shadowColor: WidgetStateProperty.all(
             AppColors.primary.withOpacity(0.4),
           ),
-          overlayColor: WidgetStateProperty.resolveWith<Color?>(
-            (states) {
-              if (states.contains(WidgetState.pressed)) {
-                return AppColors.white.withOpacity(0.15);
-              }
-              return AppColors.white.withOpacity(0.07);
-            },
-          ),
+          overlayColor: WidgetStateProperty.resolveWith<Color?>((states) {
+            if (states.contains(WidgetState.pressed)) {
+              return AppColors.white.withOpacity(0.15);
+            }
+            return AppColors.white.withOpacity(0.07);
+          }),
           foregroundColor: WidgetStateProperty.all(AppColors.white),
         ),
       ),
@@ -98,9 +99,12 @@ class AppTheme {
         hintStyle: const TextStyle(
           fontSize: 15,
           color: AppColors.grey,
-          fontFamily: 'RobotoMono',
+          fontFamily: AppTextStyles.bodyFont,
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.grey),
@@ -111,19 +115,21 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+          borderSide: const BorderSide(
+            color: AppColors.primary,
+            width: 1.5,
+          ),
         ),
         labelStyle: const TextStyle(
           fontSize: 14,
           color: AppColors.textDark,
-          fontFamily: 'RobotoMono',
+          fontFamily: AppTextStyles.bodyFont,
         ),
       ),
     );
   }
 }
 
-/// خلفية متدرجة وناعمة مثل تطبيق Medgulf لكن باللون التركوازي
 class ThemedBackground extends StatelessWidget {
   final Widget child;
   const ThemedBackground({super.key, required this.child});
@@ -135,10 +141,7 @@ class ThemedBackground extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            AppColors.background,
-            AppColors.backgroundDark,
-          ],
+          colors: [AppColors.background, AppColors.backgroundDark],
         ),
       ),
       child: Stack(
@@ -180,12 +183,15 @@ class ThemedBackground extends StatelessWidget {
   }
 }
 
-/// زر بنفس اللون الأصلي لكن بلمعة خفيفة مثل واجهات التأمين الحديثة
 class ShinyButton extends StatelessWidget {
   final String text;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
-  const ShinyButton({super.key, required this.text, required this.onPressed});
+  const ShinyButton({
+    super.key,
+    required this.text,
+    required this.onPressed,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -218,12 +224,8 @@ class ShinyButton extends StatelessWidget {
           ),
         ),
         onPressed: onPressed,
-        child: Text(
-          text,
-          style: AppTextStyles.button,
-        ),
+        child: Text(text, style: AppTextStyles.button),
       ),
     );
   }
 }
-
