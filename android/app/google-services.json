@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "620088549881",
+    "project_id": "saifi-app",
+    "storage_bucket": "saifi-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:620088549881:android:190e836ab67b41a14b1d28",
+        "android_client_info": {
+          "package_name": "com.example.saifi_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCYsU49yx4_PbRtQYfvZoIehSjjINPHZ4E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
