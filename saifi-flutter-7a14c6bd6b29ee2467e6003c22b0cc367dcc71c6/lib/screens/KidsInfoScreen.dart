@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api_service.dart';
 import 'ChildInfoScreen.dart';
 import 'theme.dart';
 
 class KidsInfoScreen extends StatelessWidget {
-  KidsInfoScreen({super.key});
+  const KidsInfoScreen({super.key});
 
-  final String parentId = FirebaseAuth.instance.currentUser!.uid;
+  Future<String?> _getParentId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString("parent_id");
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,77 +36,87 @@ class KidsInfoScreen extends StatelessWidget {
         },
       ),
 
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection("parents")
-            .doc(parentId)
-            .collection("children")
-            .snapshots(),
-        builder: (context, snap) {
-          if (!snap.hasData) {
+      body: FutureBuilder<String?>(
+        future: _getParentId(),
+        builder: (context, parentSnap) {
+          if (parentSnap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final kids = snap.data!.docs;
+          final parentId = parentSnap.data;
 
-          if (kids.isEmpty) {
-            return const Center(
-              child: Text(
-                "No kids added yet.",
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Colors.grey,
-                  fontFamily: 'RobotoMono',
-                ),
-              ),
-            );
+          if (parentId == null || parentId.isEmpty) {
+            return const Center(child: Text("Parent not logged in"));
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: kids.length,
-            itemBuilder: (context, index) {
-              
-              final kid = kids[index].data() as Map<String, dynamic>;
+          return FutureBuilder<List<Map<String, dynamic>>>(
+            future: ApiService.getChildrenByParent(parentId),
+            builder: (context, snap) {
+              if (snap.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-              return Card(
-                margin: const EdgeInsets.only(bottom: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                elevation: 3,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // ---------------- NAME + GENDER ----------------
-                      Text(
-                        "${kid['first_name']} ${kid['last_name']} (${kid['gender']})",
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      // ---------------- BIRTHDAY ----------------
-                      Text(
-                        "Birthday: ${kid['birthday'] != null ? (kid['birthday'] as Timestamp).toDate().toString().substring(0, 10) : '-'}",
-                        style: const TextStyle(fontSize: 15),
-                      ),
-
-                      const SizedBox(height: 6),
-
-                      // ---------------- INTERESTS ----------------
-                      Text(
-                        "Interests: ${(kid['interests'] as List).join(', ')}",
-                        style: const TextStyle(fontSize: 15),
-                      ),
-                    ],
+              if (!snap.hasData || snap.data!.isEmpty) {
+                return const Center(
+                  child: Text(
+                    "No kids added yet.",
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey,
+                      fontFamily: 'RobotoMono',
+                    ),
                   ),
-                ),
+                );
+              }
+
+              final kids = snap.data!;
+
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: kids.length,
+                itemBuilder: (context, index) {
+                  final kid = kids[index];
+
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    elevation: 3,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // -------- NAME + GENDER --------
+                          Text(
+                            "${kid['first_name']} ${kid['last_name']} (${kid['gender']})",
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+
+                          const SizedBox(height: 8),
+
+                          // -------- BIRTHDATE --------
+                          Text(
+                            "Birthday: ${kid['birthdate']?.toString().substring(0, 10) ?? "-"}",
+                            style: const TextStyle(fontSize: 15),
+                          ),
+
+                          const SizedBox(height: 6),
+
+                          // -------- INTERESTS --------
+                          Text(
+                            "Interests: ${(kid['interests'] as List).join(', ')}",
+                            style: const TextStyle(fontSize: 15),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               );
             },
           );

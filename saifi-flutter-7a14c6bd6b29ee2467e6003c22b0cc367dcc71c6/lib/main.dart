@@ -1,18 +1,28 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:saifi_app/screens/booking_screen.dart';
-import 'firebase_options.dart'; // هذا الملف بيتولد تلقائياً بعد أمر flutterfire configure
 import 'screens/theme.dart';
 import 'screens/splash_screen.dart';
+import 'services/api_service.dart';
 
-
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // تهيئة Firebase
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
+  testApi(); // ✅ اختبار الاتصال عند التشغيل
   runApp(const MyApp());
+}
+
+void testApi() async {
+  try {
+    final result = await ApiService.loginParent(
+      email: "test@test.com",
+      password: "123456",
+    );
+
+    print("LOGIN RESULT:");
+    print(result);
+  } catch (e) {
+    print("ERROR:");
+    print(e);
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -25,9 +35,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       home: const SplashScreen(),
-      routes: {
-        '/bookings': (context) => const BookingScreen(),
-      },
+      routes: {'/bookings': (context) => const BookingScreen()},
     );
   }
 }

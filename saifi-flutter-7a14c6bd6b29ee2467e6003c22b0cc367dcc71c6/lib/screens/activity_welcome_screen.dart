@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'theme.dart';
 import 'role_selection_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ActivityWelcomeScreen extends StatelessWidget {
   final Map<String, dynamic> activity;
@@ -9,14 +9,19 @@ class ActivityWelcomeScreen extends StatelessWidget {
   const ActivityWelcomeScreen({super.key, required this.activity});
 
   Future<void> _logout(BuildContext context) async {
-    await FirebaseAuth.instance.signOut();
+  final prefs = await SharedPreferences.getInstance();
 
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
-      (route) => false,
-    );
-  }
+  // حذف بيانات الجلسة
+  await prefs.remove("provider_id");
+  await prefs.remove("parent_id");
+
+  Navigator.pushAndRemoveUntil(
+    context,
+    MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
+    (route) => false,
+  );
+}
+
 
   @override
   Widget build(BuildContext context) {

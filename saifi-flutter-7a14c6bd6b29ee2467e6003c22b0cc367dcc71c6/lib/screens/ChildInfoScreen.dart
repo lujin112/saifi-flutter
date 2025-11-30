@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api_service.dart';
+
 import 'theme.dart';
 
 class ChildInfoScreen extends StatefulWidget {
@@ -151,35 +152,49 @@ class _ChildInfoScreenState extends State<ChildInfoScreen> {
   }
 
   Future<void> _saveChild() async {
-    if (_firstName.text.isEmpty ||
-        _lastName.text.isEmpty ||
-        _gender == null ||
-        _childId.text.isEmpty ||
-        _birthday == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill all fields")),
-      );
-      return;
+  if (_firstName.text.isEmpty ||
+      _lastName.text.isEmpty ||
+      _gender == null ||
+      _birthday == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Please fill all fields")),
+    );
+    return;
+  }
+
+  setState(() => _isSaving = true);
+
+  try {
+    // ✅ جلب parent_id من SharedPreferences بدل Firebase
+    final prefs = await SharedPreferences.getInstance();
+    final parentId = prefs.getString("parent_id");
+
+    if (parentId == null || parentId.isEmpty) {
+      throw Exception("Parent not logged in");
     }
 
-    setState(() => _isSaving = true);
-
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-    await FirebaseFirestore.instance
-        .collection("parents")
-        .doc(uid)
-        .collection("children")
-        .add({
-      "first_name": _firstName.text,
-      "last_name": _lastName.text,
+    // ✅ تجهيز البيانات حسب جدول children في PostgreSQL
+    final childData = {
+      "parent_id": parentId,
+      "first_name": _firstName.text.trim(),
+      "last_name": _lastName.text.trim(),
       "gender": _gender,
-      "child_id": _childId.text,
-      "birthday": Timestamp.fromDate(_birthday!),
+      "birthdate":
+          "${_birthday!.year}-${_birthday!.month.toString().padLeft(2, '0')}-${_birthday!.day.toString().padLeft(2, '0')}",
       "interests": _selectedInterests.toList(),
-      "created_at": FieldValue.serverTimestamp(),
-    });
+    };
+
+    // ✅ إرسال للباك اند
+    await ApiService.createChild(childData);
 
     setState(() => _isSaving = false);
     Navigator.pop(context);
+  } catch (e) {
+    setState(() => _isSaving = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Failed to save child: $e")),
+    );
   }
+}
+
 }

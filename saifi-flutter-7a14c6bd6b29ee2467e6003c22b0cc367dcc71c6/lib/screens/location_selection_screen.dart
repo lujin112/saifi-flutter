@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api_service.dart';
 import 'theme.dart';
 import 'HomeScreen.dart';
 
@@ -21,6 +21,12 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
   GoogleMapController? _mapController;
   Set<Marker> _markers = {};
 
+  Future<String?> _getParentId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString("parent_id");
+  }
+
+  // -------------------- GET LOCATION --------------------
   Future<void> _getCurrentLocation() async {
     setState(() => _isLoading = true);
 
@@ -76,29 +82,30 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
     );
   }
 
+  // -------------------- CONFIRM LOCATION (API) --------------------
   Future<void> _confirmLocation() async {
     if (_currentPosition == null) return;
 
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-    await FirebaseFirestore.instance.collection("parents").doc(uid).update({
-      "location": {
-        "lat": _currentPosition!.latitude,
-        "lng": _currentPosition!.longitude,
-      },
-    });
+    final parentId = await _getParentId();
+    if (parentId == null) return;
+
+    await ApiService.updateParentLocation(
+      parentId: parentId,
+      lat: _currentPosition!.latitude,
+      lng: _currentPosition!.longitude,
+    );
 
     setState(() => _locationConfirmed = true);
   }
 
-  void _goHome() async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-    final doc = await FirebaseFirestore.instance
-        .collection("parents")
-        .doc(uid)
-        .get();
-    final data = doc.data() ?? {};
-    String name = "${data["first_name"] ?? ""} ${data["last_name"] ?? ""}"
-        .trim();
+  // -------------------- GO HOME --------------------
+  Future<void> _goHome() async {
+    final parentId = await _getParentId();
+    if (parentId == null) return;
+
+    final parent = await ApiService.getParentById(parentId);
+    final String name =
+        "${parent["first_name"] ?? ""} ${parent["last_name"] ?? ""}".trim();
 
     Navigator.pushAndRemoveUntil(
       context,
@@ -107,6 +114,7 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
     );
   }
 
+  // -------------------- UI --------------------
   @override
   Widget build(BuildContext context) {
     return ThemedBackground(
@@ -123,10 +131,7 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
             children: [
               ShinyButton(
                 text: _isLoading ? "Locating..." : "Use Current Location",
-                onPressed: () {
-                  if (_isLoading) return;
-                  _getCurrentLocation();
-                },
+                onPressed: _isLoading ? null : _getCurrentLocation,
               ),
 
               const SizedBox(height: 20),

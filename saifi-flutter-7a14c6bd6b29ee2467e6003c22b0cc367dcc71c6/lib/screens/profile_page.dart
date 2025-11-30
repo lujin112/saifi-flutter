@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:saifi_app/screens/KidsInfoScreen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api_service.dart';
+import 'KidsInfoScreen.dart';
 import 'theme.dart';
 import 'booking_screen.dart';
 import 'edit_parent_profile_screen.dart';
@@ -10,333 +10,256 @@ import 'language_screen.dart';
 import 'notifications_screen.dart';
 import 'about_us_screen.dart';
 
-class ProfilePage extends StatelessWidget {
-  ProfilePage({super.key});
+class ProfilePage extends StatefulWidget {
+  const ProfilePage({super.key});
 
-  final String parentId = FirebaseAuth.instance.currentUser!.uid;
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  bool _loading = true;
+  Map<String, dynamic>? _parentData;
+  String? parentId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadParent();
+  }
+
+  Future<void> _loadParent() async {
+    final prefs = await SharedPreferences.getInstance();
+    parentId = prefs.getString("parent_id");
+
+    if (parentId == null) {
+      setState(() => _loading = false);
+      return;
+    }
+
+    final data = await ApiService.getParentById(parentId!);
+    setState(() {
+      _parentData = data["data"];
+      _loading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_parentData == null) {
+      return const Center(child: Text("Parent not found"));
+    }
+
+    final name =
+        "${_parentData!["first_name"] ?? ""} ${_parentData!["last_name"] ?? ""}"
+            .trim();
+    final email = _parentData!["email"] ?? "";
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 10),
 
-          // ----------------- Page Title ------------------
           const Center(
             child: Text(
               "Profile",
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
+              style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
             ),
           ),
 
           const SizedBox(height: 20),
 
-          // ------------------ Parent Header ------------------
-          StreamBuilder<DocumentSnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection("parents")
-                .doc(parentId)
-                .snapshots(),
-            builder: (context, snap) {
-              if (!snap.hasData) {
-                return const Center(
-                    child: Padding(
-                  padding: EdgeInsets.all(20),
-                  child: CircularProgressIndicator(),
-                ));
-              }
-
-              final data = snap.data!.data() as Map<String, dynamic>? ?? {};
-
-              final name = "${data['first_name'] ?? ''} ${data['last_name'] ?? ''}".trim();
-
-              final email = data["email"] ?? "example@email.com";
-return Container(
-  padding: const EdgeInsets.all(18),
-  decoration: BoxDecoration(
-    color: Colors.white,
-    borderRadius: BorderRadius.circular(14),
-    boxShadow: [
-      BoxShadow(
-          color: Colors.black12.withOpacity(0.08),
-          blurRadius: 8)
-    ],
-  ),
-  child: Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const CircleAvatar(
-        radius: 38,
-        backgroundColor: Colors.teal,
-        child: Icon(Icons.person,
-            size: 42, color: Colors.white),
-      ),
-
-      const SizedBox(width: 14),
-
-      Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              name,
-              style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87),
+          // ================= PARENT HEADER =================
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(color: Colors.black12.withOpacity(0.08), blurRadius: 8)
+              ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              email,
-              style: const TextStyle(
-                fontSize: 15,
-                color: Colors.grey,
-              ),
-            ),
-
-            const SizedBox(height: 10),
-
-            // ======== EDIT PROFILE BUTTON =========
-            TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        EditParentProfileScreen(parentId: parentId),
-                  ),
-                );
-              },
-              child: const Text(
-                "Edit Profile",
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.teal,
+            child: Row(
+              children: [
+                const CircleAvatar(
+                  radius: 38,
+                  backgroundColor: Colors.teal,
+                  child: Icon(Icons.person, size: 42, color: Colors.white),
                 ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    ],
-  ),
-);
 
-            },
+                const SizedBox(width: 14),
+
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name,
+                          style: const TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      Text(email,
+                          style: const TextStyle(color: Colors.grey)),
+
+                      const SizedBox(height: 10),
+
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                             MaterialPageRoute(
+                                builder: (_) => EditParentProfileScreen(parentId: parentId!),
+                              ),
+                          ).then((_) => _loadParent());
+                        },
+                        child: const Text("Edit Profile"),
+                      ),
+                    ],
+                  ),
+                )
+              ],
+            ),
           ),
 
           const SizedBox(height: 30),
 
-// ---------------- KIDS SECTION ----------------
-          GestureDetector(
+          // ================= KIDS =================
+          _navCard(
+            icon: Icons.child_care,
+            title: "Kids Information",
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => KidsInfoScreen()),
               );
             },
-            child: Container(
-              margin: const EdgeInsets.only(top: 20),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 6,
-                    offset: const Offset(0, 3),
-                  )
-                ],
-              ),
-              child: Row(
-                children: const [
-                  Icon(Icons.child_care, color: AppColors.primary, size: 28),
-                  SizedBox(width: 14),
-                  Text(
-                    "Kids Information",
-                    style: TextStyle(
-                      fontFamily: 'RobotoMono',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Spacer(),
-                  Icon(Icons.arrow_forward_ios, size: 17, color: Colors.grey),
-                ],
-              ),
-            ),
           ),
 
-          // =====================================================
-// =============== Booking Information =================
-// =====================================================
-
-          GestureDetector(
-            onTap: () async {
-  final bookings = await FirebaseFirestore.instance
-      .collection("bookings")
-      .where("parentId", isEqualTo: parentId)
-      .get();
-
-  if (bookings.docs.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("No bookings found")),
-    );
-    return;
-  }
-
-  // نأخذ أول بوكنق – أو تغيّرينه لاحقاً لقائمة كاملة
-  final data = bookings.docs.first.data() as Map<String, dynamic>;
-
-  Navigator.push(
-  context,
-  MaterialPageRoute(builder: (_) => const BookingScreen()),
-);
-
-},
-
-            child: Container(
-              margin: const EdgeInsets.only(top: 10),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 6,
-                    offset: const Offset(0, 3),
-                  )
-                ],
-              ),
-              child: Row(
-                children: const [
-                  Icon(Icons.calendar_month,
-                      color: AppColors.primary, size: 28),
-                  SizedBox(width: 14),
-                  Text(
-                    "Booking Information",
-                    style: TextStyle(
-                      fontFamily: 'RobotoMono',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Spacer(),
-                  Icon(Icons.arrow_forward_ios, size: 17, color: Colors.grey),
-                ],
-              ),
-            ),
+          // ================= BOOKINGS =================
+          _navCard(
+            icon: Icons.calendar_month,
+            title: "Booking Information",
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const BookingScreen()),
+              );
+            },
           ),
 
-          // =====================================================
-          // ====================== Settings =====================
-          // =====================================================
+          const SizedBox(height: 30),
 
           const Text("Settings",
-              style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87)),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+
           const SizedBox(height: 12),
 
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: [
-                BoxShadow(
-                    color: Colors.black12.withOpacity(0.08), blurRadius: 8)
-              ],
-            ),
-            child: Column(
-              children: [
-                _settingItem(
-  Icons.person,
-  "Manage Profile",
-  onTap: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => EditParentProfileScreen(parentId: parentId),
-      ),
-    );
-  },
-),
-_settingItem(
-  Icons.lock,
-  "Password & Security",
-  onTap: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const PasswordSecurityScreen(),
-      ),
-    );
-  },
-),
+          _navCard(
+            icon: Icons.person,
+            title: "Manage Profile",
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      EditParentProfileScreen(parentId: parentId!),
+                ),
+              );
+            },
+          ),
 
-                _settingItem(
-  Icons.language,
-  "Language",
-  onTap: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const LanguageScreen()),
-    );
-  },
-),
+          _navCard(
+            icon: Icons.lock,
+            title: "Password & Security",
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const PasswordSecurityScreen(),
+                ),
+              );
+            },
+          ),
 
-_settingItem(
-  Icons.notifications,
-  "Notifications",
-  onTap: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-    );
-  },
-),
+          _navCard(
+            icon: Icons.language,
+            title: "Language",
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const LanguageScreen()),
+              );
+            },
+          ),
 
-_settingItem(
-  Icons.info,
-  "About Us",
-  onTap: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const AboutUsScreen()),
-    );
-  },
-),
+          _navCard(
+            icon: Icons.notifications,
+            title: "Notifications",
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const NotificationsScreen(),
+                ),
+              );
+            },
+          ),
 
-              ],
-            ),
+          _navCard(
+            icon: Icons.info,
+            title: "About Us",
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AboutUsScreen()),
+              );
+            },
           ),
         ],
       ),
     );
   }
 
-  // ---------------- REUSABLE SETTING ITEM ----------------
-  Widget _settingItem(IconData icon, String title, {VoidCallback? onTap}) {
-  return ListTile(
-    leading: Icon(icon, color: Colors.teal),
-    title: Text(title,
-        style: const TextStyle(
-            fontSize: 17, fontWeight: FontWeight.w500)),
-    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-    onTap: onTap,
-  );
-}
-
+  // ================= REUSABLE CARD =================
+  Widget _navCard({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 6,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: AppColors.primary, size: 28),
+            const SizedBox(width: 14),
+            Text(title,
+                style: const TextStyle(
+                    fontFamily: 'RobotoMono',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600)),
+            const Spacer(),
+            const Icon(Icons.arrow_forward_ios, size: 17, color: Colors.grey),
+          ],
+        ),
+      ),
+    );
+  }
 }

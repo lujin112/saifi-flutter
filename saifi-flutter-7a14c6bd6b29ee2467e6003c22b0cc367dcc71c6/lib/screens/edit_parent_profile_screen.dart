@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api_service.dart';
 import 'theme.dart';
 
 class EditParentProfileScreen extends StatefulWidget {
@@ -25,44 +26,49 @@ class _EditParentProfileScreenState extends State<EditParentProfileScreen> {
     _loadData();
   }
 
+  // =========================
+  // ✅ Load Parent From API
+  // =========================
   Future<void> _loadData() async {
-    final snap = await FirebaseFirestore.instance
-        .collection("parents")
-        .doc(widget.parentId)
-        .get();
+    try {
+      final parent = await ApiService.getParentById(widget.parentId);
 
-    final data = snap.data() as Map<String, dynamic>? ?? {};
-
-    _first.text = data["first_name"] ?? "";
-    _last.text = data["last_name"] ?? "";
-    _phone.text = data["phone"] ?? "";
+      _first.text = parent["first_name"] ?? "";
+      _last.text = parent["last_name"] ?? "";
+      _phone.text = parent["phone"] ?? "";
+    } catch (e) {
+      print("LOAD PROFILE ERROR: $e");
+    }
 
     setState(() => _loading = false);
   }
 
+  // =========================
+  // ✅ Update Parent In API
+  // =========================
   Future<void> _save() async {
-    setState(() {});
+    setState(() => _loading = true);
 
-    await FirebaseFirestore.instance
-        .collection("parents")
-        .doc(widget.parentId)
-        .update({
-      "first_name": _first.text.trim(),
-      "last_name": _last.text.trim(),
-      "phone": _phone.text.trim(),
-      "updated_at": FieldValue.serverTimestamp(),
-    });
+    try {
+      await ApiService.updateParent(
+        parentId: widget.parentId,
+        firstName: _first.text.trim(),
+        lastName: _last.text.trim(),
+        phone: _phone.text.trim(),
+      );
 
-    Navigator.pop(context);
+      Navigator.pop(context);
+    } catch (e) {
+      print("UPDATE PROFILE ERROR: $e");
+      setState(() => _loading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     if (_loading) {
       return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
+        body: Center(child: CircularProgressIndicator()),
       );
     }
 

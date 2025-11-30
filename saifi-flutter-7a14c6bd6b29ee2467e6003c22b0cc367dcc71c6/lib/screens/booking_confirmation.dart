@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api_service.dart';
 
 class BookingConfirmScreen extends StatefulWidget {
   final Map<String, dynamic> childData;
@@ -20,19 +20,12 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
   bool agreed = false;
   bool saving = false;
 
-  // حساب العمر بشكل آمن (String + Timestamp)
+  // ✅ حساب العمر من String فقط (PostgreSQL)
   int calculateAge(dynamic birthDate) {
     try {
-      DateTime birth;
+      if (birthDate is! String) return 0;
 
-      if (birthDate is Timestamp) {
-        birth = birthDate.toDate();
-      } else if (birthDate is String) {
-        birth = DateTime.parse(birthDate);
-      } else {
-        return 0;
-      }
-
+      final birth = DateTime.parse(birthDate);
       final today = DateTime.now();
       int age = today.year - birth.year;
 
@@ -47,38 +40,47 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
     }
   }
 
-  // safe date
+  // ✅ تنسيق التاريخ بدون Timestamp
   String safeDate(dynamic v) {
     try {
-      if (v is Timestamp) {
-        final d = v.toDate();
-        return "${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
-      }
-
       if (v is String) {
         if (v.length >= 10) return v.substring(0, 10);
         return v;
       }
     } catch (_) {}
-
     return "-";
   }
 
-  // تأكيد الحجز
+  // ✅ إرسال الحجز إلى PostgreSQL عبر API
   Future<void> confirmBooking() async {
     if (!agreed || saving) return;
 
     setState(() => saving = true);
 
-    final uid = FirebaseAuth.instance.currentUser!.uid;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final parentId = prefs.getString("parent_id");
 
-    await FirebaseFirestore.instance.collection("booking").add({
-      "childAge": calculateAge(widget.childData["birthday"] ?? ""),
-    });
+      if (parentId == null || parentId.isEmpty) {
+        setState(() => saving = false);
+        return;
+      }
 
-    setState(() => saving = false);
+      await ApiService.createBooking(
+  parentId: parentId,
+  childId: widget.childData["child_id"],
+  activityId: widget.activityData["activity_id"],
+  providerId: widget.activityData["providerId"], // ✅ هذا كان ناقص
+);
 
-    Navigator.pushNamed(context, "/booking");
+
+      setState(() => saving = false);
+
+      Navigator.pushNamed(context, "/booking");
+    } catch (e) {
+      setState(() => saving = false);
+      print("BOOKING ERROR: $e");
+    }
   }
 
   @override
@@ -86,7 +88,7 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
     final child = widget.childData;
     final activity = widget.activityData;
 
-    final int childAge = calculateAge(child["birthday"]);
+    final int childAge = calculateAge(child["birthdate"]);
 
     return Scaffold(
       backgroundColor: const Color(0xfff5f7fa),
@@ -95,13 +97,11 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
         elevation: 0.4,
         backgroundColor: Colors.white,
       ),
-
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             // CHILD CARD
             Container(
               padding: const EdgeInsets.all(20),
@@ -119,11 +119,13 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(child['name'],
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      )),
+                  Text(
+                    child['name'] ?? "",
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   const SizedBox(height: 6),
                   Text("العمر: $childAge"),
                   Text("الجنس: ${child['gender']}"),
@@ -143,11 +145,13 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(activity['title'],
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      )),
+                  Text(
+                    activity['title'],
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   const SizedBox(height: 6),
                   Text("تاريخ البداية: ${safeDate(activity['start_date'])}"),
                   Text("تاريخ النهاية: ${safeDate(activity['end_date'])}"),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api_service.dart';
 import 'theme.dart';
 import 'HomeScreen.dart';
 
@@ -44,37 +44,35 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
+  // =========================
+  // ✅ LOGIN VIA API
+  // =========================
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      // تسجيل الدخول فعلي
-      final authResult = await FirebaseAuth.instance
-          .signInWithEmailAndPassword(
-              email: _emailController.text.trim(),
-              password: _passwordController.text.trim());
+      final result = await ApiService.loginParent(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
 
-      final uid = authResult.user!.uid;
+      final parent = result["parent"];
+      final parentId = parent["parent_id"];
+      final userName =
+          "${parent["first_name"] ?? ""} ${parent["last_name"] ?? ""}".trim();
 
-      // نجيب بيانات الأب من فايرستور
-      final parentDoc = await FirebaseFirestore.instance
-          .collection("parents")
-          .doc(uid)
-          .get();
-
-      final parentData = parentDoc.data() ?? {};
-
-      final userName = parentData["name"] ?? "Parent";
+      // ✅ حفظ parent_id محليًا بدل FirebaseAuth
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString("parent_id", parentId);
 
       setState(() => _isLoading = false);
 
-      // دخول للهوم
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
-          builder: (context) => HomeScreen(userName: userName),
+          builder: (_) => HomeScreen(userName: userName),
         ),
         (route) => false,
       );
@@ -90,6 +88,9 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
+  // =========================
+  // ✅ UI (لم نلمسه)
+  // =========================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -107,7 +108,6 @@ class _LoginScreenState extends State<LoginScreen>
             children: [
               const SizedBox(height: 40),
 
-              // أيقونة متحركة
               ScaleTransition(
                 scale: _pulseAnimation,
                 child: const Icon(
@@ -141,7 +141,6 @@ class _LoginScreenState extends State<LoginScreen>
 
               const SizedBox(height: 40),
 
-              // إيميل
               TextFormField(
                 controller: _emailController,
                 decoration: const InputDecoration(
@@ -154,7 +153,6 @@ class _LoginScreenState extends State<LoginScreen>
               ),
               const SizedBox(height: 20),
 
-              // باسورد
               TextFormField(
                 controller: _passwordController,
                 obscureText: true,
@@ -169,7 +167,6 @@ class _LoginScreenState extends State<LoginScreen>
 
               const SizedBox(height: 30),
 
-              // زر تسجيل الدخول
               GestureDetector(
                 onTap: _isLoading ? null : _login,
                 child: AbsorbPointer(
@@ -196,7 +193,7 @@ class _LoginScreenState extends State<LoginScreen>
                     child: Center(
                       child: _isLoading
                           ? const CircularProgressIndicator(color: Colors.white)
-                          : Text(
+                          : const Text(
                               "Login",
                               style: TextStyle(
                                 fontFamily: 'RobotoMono',
@@ -212,23 +209,19 @@ class _LoginScreenState extends State<LoginScreen>
 
               const SizedBox(height: 25),
 
-              // رابط التسجيل
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text(
+                children: const [
+                  Text(
                     "Don’t have an account? ",
                     style: TextStyle(fontFamily: 'RobotoMono'),
                   ),
-                  GestureDetector(
-                    onTap: () {},
-                    child: const Text(
-                      "Sign up",
-                      style: TextStyle(
-                        fontFamily: 'RobotoMono',
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
+                  Text(
+                    "Sign up",
+                    style: TextStyle(
+                      fontFamily: 'RobotoMono',
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],

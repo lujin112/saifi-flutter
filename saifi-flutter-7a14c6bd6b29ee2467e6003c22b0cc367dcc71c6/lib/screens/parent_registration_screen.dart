@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api_service.dart';
 
 import 'theme.dart';
 import 'ChildInfoScreen.dart';
@@ -17,7 +17,6 @@ class ParentRegistrationScreen extends StatefulWidget {
 class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  final TextEditingController _idController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _firstNameController = TextEditingController();
@@ -63,7 +62,6 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
                   key: _formKey,
                   child: Column(
                     children: [
-                      // FIRST + LAST NAME
                       Row(
                         children: [
                           Expanded(
@@ -84,31 +82,8 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
                         ],
                       ),
 
-                      // const SizedBox(height: 15),
-
-                      // // ID
-                      // _buildTextField(
-                      //   controller: _idController,
-                      //   label: 'ID',
-                      //   keyboardType: TextInputType.number,
-                      //   inputFormatters: [
-                      //     FilteringTextInputFormatter.digitsOnly,
-                      //     LengthLimitingTextInputFormatter(10),
-                      //   ],
-                      //   validator: (value) {
-                      //     if (value == null || value.isEmpty) {
-                      //       return 'Please enter ID';
-                      //     }
-                      //     if (value.length != 10) {
-                      //       return 'ID must be exactly 10 digits';
-                      //     }
-                      //     return null;
-                      //   },
-                      // ),
-
                       const SizedBox(height: 15),
 
-                      // PHONE
                       _buildTextField(
                         controller: _phoneController,
                         label: 'Phone Number',
@@ -130,7 +105,6 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
 
                       const SizedBox(height: 15),
 
-                      // EMAIL
                       _buildTextField(
                         controller: _emailController,
                         label: 'Email',
@@ -139,9 +113,8 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
                           if (value == null || value.isEmpty) {
                             return 'Please enter email';
                           }
-                          if (!_emailDomains.any(
-                            (domain) => value.endsWith(domain),
-                          )) {
+                          if (!_emailDomains
+                              .any((domain) => value.endsWith(domain))) {
                             return 'Email must end with ${_emailDomains.join(", ")}';
                           }
                           return null;
@@ -150,7 +123,6 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
 
                       const SizedBox(height: 15),
 
-                      // PASSWORD
                       TextFormField(
                         controller: _passwordController,
                         obscureText: true,
@@ -177,7 +149,6 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
 
                       const SizedBox(height: 30),
 
-                      // NEXT BUTTON → GO TO Add Child Screen
                       ShinyButton(
                         text: "Continue to Add Children",
                         onPressed: _registerParent,
@@ -193,37 +164,33 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
     );
   }
 
+  // =========================
+  // ✅ REGISTER VIA API
+  // =========================
   Future<void> _registerParent() async {
     if (!_formKey.currentState!.validate()) return;
 
     try {
-      final userCredential =
-          await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      final result = await ApiService.registerParent(
+        firstName: _firstNameController.text.trim(),
+        lastName: _lastNameController.text.trim(),
         email: _emailController.text.trim(),
+        phone: _phoneController.text.trim(),
         password: _passwordController.text.trim(),
       );
 
-      final uid = userCredential.user!.uid;
+      final parentId = result["parent_id"];
 
-      await FirebaseFirestore.instance.collection("parents").doc(uid).set({
-        "user_uid": uid,
-        "first_name": _firstNameController.text.trim(),
-        "last_name": _lastNameController.text.trim(),
-        "email": _emailController.text.trim(),
-        "phone": _phoneController.text.trim(),
-        "children_count": 0,
-        "created_at": FieldValue.serverTimestamp(),
-        "location": {"lat": 0, "lng": 0},
-      });
+      // ✅ خزّن parent_id محليًا
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString("parent_id", parentId);
 
-      // MOVE DIRECTLY TO CHILD INFO SCREEN
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (_) => const ChildInfoScreen(children: []),
         ),
       );
-
     } catch (e) {
       _showMessage(context, "Registration Error", e.toString());
     }
@@ -278,7 +245,6 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
 
   @override
   void dispose() {
-    _idController.dispose();
     _phoneController.dispose();
     _emailController.dispose();
     _firstNameController.dispose();

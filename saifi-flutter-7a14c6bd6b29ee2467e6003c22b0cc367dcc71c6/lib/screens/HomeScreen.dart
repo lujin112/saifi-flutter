@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/api_service.dart';
 import 'role_selection_screen.dart';
 import 'chatbot_screen.dart';
 import 'theme.dart';
@@ -436,92 +436,53 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildActivitiesList(BuildContext context) {
-    return SizedBox(
-      height: 210,
-      child: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('providers').snapshots(),
-        builder: (context, providerSnapshot) {
-          if (providerSnapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            );
-          }
-
-          if (!providerSnapshot.hasData || providerSnapshot.data!.docs.isEmpty) {
-            return const Center(
-              child: Text(
-                "No providers found",
-                style: TextStyle(
-                  fontFamily: 'RobotoMono',
-                  color: AppColors.textDark,
-                  fontSize: 16,
-                ),
-              ),
-            );
-          }
-
-          final providers = providerSnapshot.data!.docs;
-
-          return FutureBuilder<List<Map<String, dynamic>>>(
-            future: _fetchAllActivities(providers),
-            builder: (context, activitySnapshot) {
-              if (!activitySnapshot.hasData) {
-                return const Center(
-                  child: CircularProgressIndicator(color: AppColors.primary),
-                );
-              }
-
-              final activities = activitySnapshot.data!;
-
-              if (activities.isEmpty) {
-                return const Center(
-                  child: Text(
-                    "No activities available",
-                    style: TextStyle(
-                      fontFamily: 'RobotoMono',
-                      color: AppColors.textDark,
-                      fontSize: 16,
-                    ),
-                  ),
-                );
-              }
-
-              return ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: activities.length,
-                itemBuilder: (context, i) {
-                  final data = activities[i];
-
-                  return _buildActivityCard(
-                    data['title'] ?? 'No Title',
-                    data,
-                    context,
-                    
-                  );
-                },
-              );
-            },
+Widget _buildActivitiesList(BuildContext context) {
+  return SizedBox(
+    height: 210,
+    child: FutureBuilder<List<Map<String, dynamic>>>(
+      future: ApiService.getAllActivities(),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(color: AppColors.primary),
           );
-        },
-      ),
-    );
-  }
+        }
 
-  Future<List<Map<String, dynamic>>> _fetchAllActivities(
-      List<QueryDocumentSnapshot> providers) async {
-    List<Map<String, dynamic>> all = [];
+        if (snap.hasError || !snap.hasData || snap.data!.isEmpty) {
+          return const Center(
+            child: Text(
+              "No activities available",
+              style: TextStyle(
+                fontFamily: 'RobotoMono',
+                color: AppColors.textDark,
+                fontSize: 16,
+              ),
+            ),
+          );
+        }
 
-    for (var provider in providers) {
-      final actSnapshot = await provider.reference.collection('activities').get();
+        final activities = snap.data!;
 
-      for (var a in actSnapshot.docs) {
-        all.add(a.data());
-      }
-    }
+        return ListView.builder(
+          scrollDirection: Axis.horizontal,
+          itemCount: activities.length,
+          itemBuilder: (context, i) {
+            final data = activities[i];
 
-    return all;
-  }
+            return _buildActivityCard(
+              data['title'] ?? 'No Title',
+              data,
+              context,
+            );
+          },
+        );
+      },
+    ),
+  );
+}
+
+
+ 
 
   Widget _buildActivityCard(
     String title, Map<String, dynamic> fullData, BuildContext context) {

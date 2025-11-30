@@ -4,10 +4,11 @@ import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:geocoding/geocoding.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:crypto/crypto.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api_service.dart';
 import 'dart:convert';
+import 'package:crypto/crypto.dart';
+
 
 import 'activity_registration_screen.dart';
 
@@ -111,58 +112,45 @@ class _ClubProviderRegistrationScreenState
     }
   }
 
-  Future<void> _register() async {
-    if (!_formKey.currentState!.validate()) return;
+Future<void> _register() async {
+  if (!_formKey.currentState!.validate()) return;
 
-    final auth = FirebaseAuth.instance;
-    final firestore = FirebaseFirestore.instance;
+  try {
+    // ✅ تجهيز بيانات البروفايدر حسب PostgreSQL
+    final providerData = {
+      "provider_name": _providerNameController.text.trim(),
+      "email": _emailController.text.trim(),
+      "phone": _phoneController.text.trim(),
+      "crn": _crnController.text.trim().isEmpty
+          ? null
+          : _crnController.text.trim(),
+      "password": _passwordController.text.trim(),
 
-    try {
-      // Create provider account
-      UserCredential userCredential =
-          await auth.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
+      "latitude": _currentPosition?.latitude,
+      "longitude": _currentPosition?.longitude,
+      "address": _locationName,
+    };
 
-      String uid = userCredential.user!.uid;
+    // ✅ إرسال للباك إند
+    final result = await ApiService.registerProvider(providerData);
 
-      // Prepare provider data
-      Map<String, dynamic> providerData = {
-        'provider_id': uid,
-        'provider_name': _providerNameController.text.trim(),
-        'email': _emailController.text.trim(),
-        'phone_number': _phoneController.text.trim(),
-        'crn': _crnController.text.trim().isEmpty
-            ? null
-            : _crnController.text.trim(),
+    // ✅ تخزين provider_id محليًا
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString("provider_id", result["provider_id"].toString());
 
-        'password_hash': hashPassword(_passwordController.text.trim()),
-
-        'location': _currentPosition == null
-            ? null
-            : {
-                'latitude': _currentPosition!.latitude,
-                'longitude': _currentPosition!.longitude,
-                'address': _locationName,
-              },
-        'created_at': DateTime.now(),
-      };
-
-      await firestore.collection('providers').doc(uid).set(providerData);
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const ActivityRegistrationScreen(),
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Registration error: $e")));
-    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ActivityRegistrationScreen(),
+      ),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Registration error: $e")),
+    );
   }
+}
+
 
   @override
   Widget build(BuildContext context) {

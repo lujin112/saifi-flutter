@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'theme.dart';
 import 'activity_welcome_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api_service.dart';
 
 class ActivityRegistrationScreen extends StatefulWidget {
   const ActivityRegistrationScreen({super.key});
@@ -336,60 +336,57 @@ class _ActivityRegistrationScreenState
   }
 
   Future<void> _saveActivity(BuildContext context) async {
-    if (_titleController.text.isEmpty ||
-        _selectedDuration == null ||
-        _selectedAgeRanges.isEmpty ||
-        _selectedActivityStatus == null ||
-        _selectedActivityType == null) {
-      _showMessage(context, 'Error', 'Please fill all required fields', false);
+  if (_titleController.text.isEmpty ||
+      _selectedDuration == null ||
+      _selectedAgeRanges.isEmpty ||
+      _selectedActivityStatus == null ||
+      _selectedActivityType == null) {
+    _showMessage(context, 'Error', 'Please fill all required fields', false);
+    return;
+  }
+
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final providerId = prefs.getString("provider_id");
+
+    if (providerId == null || providerId.isEmpty) {
+      _showMessage(context, 'Error', 'Provider not logged in!', false);
       return;
     }
 
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        _showMessage(context, 'Error', 'Provider not logged in!', false);
-        return;
-      }
+    final rawAge = _selectedAgeRanges.first.replaceAll(" years", "");
+    final parts = rawAge.contains("-") ? rawAge.split("-") : [];
 
-      final firestore = FirebaseFirestore.instance;
+    final activityData = {
+      "provider_id": providerId,
+      "title": _titleController.text.trim(),
+      "description": _descriptionController.text.trim(),
+      "gender": null,
+      "age_from": parts.isNotEmpty ? int.tryParse(parts[0]) : 0,
+      "age_to": parts.length > 1 ? int.tryParse(parts[1]) : 99,
+      "price": double.tryParse(_priceController.text.trim()) ?? 0.0,
+      "duration": _selectedDuration,
+      "type": _selectedActivityType,
+      "status": _selectedActivityStatus == "Active",
+      "start_date": _startDateController.text.trim(),
+      "end_date": _endDateController.text.trim(),
+    };
 
-      final activityDoc = firestore
-          .collection('providers')
-          .doc(user.uid)
-          .collection('activities')
-          .doc();
+    final result = await ApiService.createActivity(activityData);
 
-      Map<String, dynamic> activityData = {
-        'activity_id': activityDoc.id,
-        'title': _titleController.text.trim(),
-        'description': _descriptionController.text.trim(),
-        'start_date': _startDateController.text.trim(),
-        'end_date': _endDateController.text.trim(),
-        'duration_hours': _selectedDuration,
-        'capacity': int.tryParse(_capacityController.text.trim()) ?? 0,
-        'price_sar': double.tryParse(_priceController.text.trim()) ?? 0.0,
-        'age_ranges': _selectedAgeRanges,
-        'activity_status': _selectedActivityStatus,
-        'activity_type': _selectedActivityType,
-        'created_at': DateTime.now(),
-        'provider_id': user.uid,
-      };
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ActivityWelcomeScreen(activity: result),
+      ),
+    );
 
-      await activityDoc.set(activityData);
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ActivityWelcomeScreen(activity: activityData),
-        ),
-      );
-
-      _clearForm();
-    } catch (e) {
-      _showMessage(context, 'Error', 'Failed to save activity: $e', false);
-    }
+    _clearForm();
+  } catch (e) {
+    _showMessage(context, 'Error', 'Failed to save activity: $e', false);
   }
+}
+
 
   void _showMessage(
       BuildContext context, String title, String message, bool success) {

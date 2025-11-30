@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api_service.dart';
 
 class PasswordSecurityScreen extends StatefulWidget {
   const PasswordSecurityScreen({super.key});
 
   @override
-  State<PasswordSecurityScreen> createState() => _PasswordSecurityScreenState();
+  State<PasswordSecurityScreen> createState() =>
+      _PasswordSecurityScreenState();
 }
 
 class _PasswordSecurityScreenState extends State<PasswordSecurityScreen> {
@@ -13,14 +15,37 @@ class _PasswordSecurityScreenState extends State<PasswordSecurityScreen> {
   bool _loading = false;
 
   Future<void> _changePassword() async {
+    if (_password.text.trim().length < 8) {
+      _showMessage("Error", "Password must be at least 8 characters");
+      return;
+    }
+
     setState(() => _loading = true);
 
-    await FirebaseAuth.instance.currentUser!
-        .updatePassword(_password.text.trim());
+    try {
+      // ✅ جلب parent_id من التخزين المحلي
+      final prefs = await SharedPreferences.getInstance();
+      final parentId = prefs.getString("parent_id");
 
-    setState(() => _loading = false);
+      if (parentId == null || parentId.isEmpty) {
+        _showMessage("Error", "User not logged in");
+        setState(() => _loading = false);
+        return;
+      }
 
-    Navigator.pop(context);
+      // ✅ استدعاء API لتحديث كلمة المرور
+      await ApiService.updateParentPassword(
+        parentId: parentId,
+        newPassword: _password.text.trim(),
+      );
+
+      setState(() => _loading = false);
+
+      Navigator.pop(context);
+    } catch (e) {
+      setState(() => _loading = false);
+      _showMessage("Password Update Failed", e.toString());
+    }
   }
 
   @override
@@ -41,11 +66,35 @@ class _PasswordSecurityScreenState extends State<PasswordSecurityScreen> {
 
             ElevatedButton(
               onPressed: _loading ? null : _changePassword,
-              child: const Text("Update Password"),
+              child: _loading
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text("Update Password"),
             )
           ],
         ),
       ),
     );
+  }
+
+  void _showMessage(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("OK"),
+          )
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _password.dispose();
+    super.dispose();
   }
 }
