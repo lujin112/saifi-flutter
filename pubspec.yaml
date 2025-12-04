@@ -1,7 +1,7 @@
 name: saifi_app
 description: Saifi summer activities app
 
-publish_to: 'none' # ما رح تنشره على pub.dev
+publish_to: 'none'
 
 version: 1.0.0+1
 
@@ -11,29 +11,23 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  url_launcher: ^6.2.5
-  # أيقونات
-  cupertino_icons: ^1.0.2
 
-  # الخرائط والموقع
+  cupertino_icons: ^1.0.2
+  url_launcher: ^6.2.5
+
   geolocator: ^14.0.2
   geocoding: ^4.0.0
-
   google_maps_flutter: ^2.2.3
   permission_handler: ^12.0.1
 
-  # أنيميشن (اللوتي)
-  lottie: ^3.1.2
+  shared_preferences: ^2.2.2
 
-  # لربط البوت (Dialogflow)
   http: ^1.2.0
   googleapis_auth: ^2.0.0
+
   firebase_core: ^3.4.0
   cloud_firestore: ^5.4.0
   firebase_auth: ^5.2.0
-  
-
-
 
 dev_dependencies:
   flutter_test:
@@ -44,18 +38,17 @@ flutter:
   uses-material-design: true
 
   fonts:
-  - family: PlayfairDisplay
-    fonts:
-      - asset: assets/font/PlayfairDisplay-Regular.ttf
-      - asset: assets/font/PlayfairDisplay-Bold.ttf
-        weight: 700
+    - family: PlayfairDisplay
+      fonts:
+        - asset: assets/font/PlayfairDisplay-Regular.ttf
+        - asset: assets/font/PlayfairDisplay-Bold.ttf
+          weight: 700
 
-  - family: Merriweather
-    fonts:
-      - asset: assets/font/Merriweather-Regular.ttf
-      - asset: assets/font/Merriweather-Bold.ttf
-        weight: 700
-
+    - family: Merriweather
+      fonts:
+        - asset: assets/font/Merriweather-Regular.ttf
+        - asset: assets/font/Merriweather-Bold.ttf
+          weight: 700
 
   assets:
     - assets/logo.png
@@ -66,4 +59,3 @@ flutter:
     - assets/slideshow2.png
     - assets/login.png
    # - assets/saifibot.json
-

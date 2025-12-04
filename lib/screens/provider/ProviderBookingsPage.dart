@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../service/theme.dart';
+import '../service/api_service.dart';
 
-class ProviderBookingsPage extends StatelessWidget {
+class ProviderBookingsPage extends StatefulWidget {
   final String activityId;
 
   const ProviderBookingsPage({
@@ -11,11 +11,47 @@ class ProviderBookingsPage extends StatelessWidget {
   });
 
   @override
+  State<ProviderBookingsPage> createState() =>
+      _ProviderBookingsPageState();
+}
+
+class _ProviderBookingsPageState extends State<ProviderBookingsPage> {
+  late Future<List<Map<String, dynamic>>> _bookingsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBookings();
+  }
+
+void _loadBookings() {
+  _bookingsFuture =
+      ApiService.getBookingsByActivity(activityId: widget.activityId);
+}
+
+Future<void> _updateStatus(String bookingId, String status) async {
+  try {
+    await ApiService.updateBookingStatus(
+      bookingId: bookingId,
+      status: status,
+    );
+
+    setState(() {
+      _loadBookings();
+    });
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Update failed: $e")),
+    );
+  }
+}
+
+
+  @override
   Widget build(BuildContext context) {
     return ThemedBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
-
         appBar: AppBar(
           backgroundColor: AppColors.primary,
           elevation: 0,
@@ -27,21 +63,17 @@ class ProviderBookingsPage extends StatelessWidget {
             ),
           ),
         ),
-
-        body: StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance
-              .collection("bookings")
-              .where("activity_id", isEqualTo: activityId)
-              .orderBy("created_at", descending: true)
-              .snapshots(),
+        body: FutureBuilder<List<Map<String, dynamic>>>(
+          future: _bookingsFuture,
           builder: (context, snapshot) {
             if (!snapshot.hasData) {
               return const Center(
-                child: CircularProgressIndicator(color: Colors.white),
+                child:
+                    CircularProgressIndicator(color: Colors.white),
               );
             }
 
-            final bookings = snapshot.data!.docs;
+            final bookings = snapshot.data!;
 
             if (bookings.isEmpty) {
               return const Center(
@@ -60,8 +92,14 @@ class ProviderBookingsPage extends StatelessWidget {
               padding: const EdgeInsets.all(18),
               itemCount: bookings.length,
               itemBuilder: (context, index) {
-                final doc = bookings[index];
-                final data = doc.data() as Map<String, dynamic>;
+                final data = bookings[index];
+                final bookingId = data["booking_id"];
+                final status =
+                    (data['status'] ?? "pending").toString();
+
+                final bool isFinal =
+                    status == "confirmed" ||
+                        status == "rejected";
 
                 return Container(
                   margin: const EdgeInsets.only(bottom: 16),
@@ -71,18 +109,20 @@ class ProviderBookingsPage extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black26.withOpacity(.08),
+                        color:
+                            Colors.black26.withOpacity(.08),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
                     ],
                   ),
-
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start,
                     children: [
                       Text(
-                        data['first_name'] ?? "Unknown Child",
+                        data['child_name'] ??
+                            "Unknown Child",
                         style: const TextStyle(
                           fontFamily: 'RobotoMono',
                           fontSize: 18,
@@ -93,7 +133,7 @@ class ProviderBookingsPage extends StatelessWidget {
                       const SizedBox(height: 5),
 
                       Text(
-                        "Parent ID: ${data['parentId']}",
+                        "Parent ID: ${data['parent_id']}",
                         style: const TextStyle(
                           fontFamily: 'RobotoMono',
                           fontSize: 14,
@@ -104,7 +144,7 @@ class ProviderBookingsPage extends StatelessWidget {
                       const SizedBox(height: 5),
 
                       Text(
-                        "Gender: ${data["childGender"]}",
+                        "Gender: ${data["child_gender"] ?? "-"}",
                         style: const TextStyle(
                           fontFamily: 'RobotoMono',
                           fontSize: 14,
@@ -114,13 +154,14 @@ class ProviderBookingsPage extends StatelessWidget {
                       const SizedBox(height: 5),
 
                       Text(
-                        "Status: ${data['booking_status'] ?? "pending"}",
+                        "Status: $status",
                         style: TextStyle(
                           fontFamily: 'RobotoMono',
                           fontSize: 14,
-                          color: (data['booking_status'] == "confirmed")
+                          fontWeight: FontWeight.bold,
+                          color: status == "confirmed"
                               ? Colors.green
-                              : (data['booking_status'] == "rejected")
+                              : status == "rejected"
                                   ? Colors.red
                                   : Colors.orange,
                         ),
@@ -130,22 +171,26 @@ class ProviderBookingsPage extends StatelessWidget {
 
                       Row(
                         children: [
-                          // ACCEPT
                           Expanded(
                             child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
+                              style:
+                                  ElevatedButton.styleFrom(
+                                backgroundColor:
+                                    Colors.green,
                               ),
-                              onPressed: () {
-                                doc.reference.update({
-                                  "booking_status": "confirmed",
-                                });
-                              },
+                              onPressed: isFinal
+                                  ? null
+                                  : () => _updateStatus(
+                                        bookingId,
+                                        "confirmed",
+                                      ),
                               child: const Text(
                                 "Approve",
                                 style: TextStyle(
-                                  fontFamily: 'RobotoMono',
-                                  fontWeight: FontWeight.bold,
+                                  fontFamily:
+                                      'RobotoMono',
+                                  fontWeight:
+                                      FontWeight.bold,
                                 ),
                               ),
                             ),
@@ -153,22 +198,26 @@ class ProviderBookingsPage extends StatelessWidget {
 
                           const SizedBox(width: 12),
 
-                          // REJECT
                           Expanded(
                             child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.redAccent,
+                              style:
+                                  ElevatedButton.styleFrom(
+                                backgroundColor:
+                                    Colors.redAccent,
                               ),
-                              onPressed: () {
-                                doc.reference.update({
-                                  "booking_status": "rejected",
-                                });
-                              },
+                              onPressed: isFinal
+                                  ? null
+                                  : () => _updateStatus(
+                                        bookingId,
+                                        "rejected",
+                                      ),
                               child: const Text(
                                 "Reject",
                                 style: TextStyle(
-                                  fontFamily: 'RobotoMono',
-                                  fontWeight: FontWeight.bold,
+                                  fontFamily:
+                                      'RobotoMono',
+                                  fontWeight:
+                                      FontWeight.bold,
                                 ),
                               ),
                             ),

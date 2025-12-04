@@ -12,57 +12,75 @@ class SelectChildScreen extends StatelessWidget {
   });
 
   // ---------------------------------------------------------
-  // Eligibility Logic
+  // ✅ CALCULATE AGE FROM BIRTH DATE
   // ---------------------------------------------------------
- Map<String, dynamic> checkEligibility(Map<String, dynamic> child) {
-  List<String> reasons = [];
+  int _calculateAge(dynamic birthDate) {
+    if (birthDate == null) return 0;
 
-  // Child age parsing
-  int age = 0;
-  try {
-    age = child['age'] is int
-        ? child['age']
-        : int.tryParse(child['age'].toString()) ?? 0;
-  } catch (_) {
-    age = 0;
-  }
+    try {
+      final date = birthDate is DateTime
+          ? birthDate
+          : DateTime.parse(birthDate.toString());
 
-  String gender = child['gender'] ?? "unknown";
+      final today = DateTime.now();
+      int age = today.year - date.year;
 
-  // Activity age range "9-12"
-  int minAge = 0;
-  int maxAge = 99;
+      if (today.month < date.month ||
+          (today.month == date.month && today.day < date.day)) {
+        age--;
+      }
 
-  final rawRange = activityData["age_range"];
-
-  if (rawRange is String && rawRange.contains("-")) {
-    final parts = rawRange.split("-");
-    if (parts.length >= 2) {
-      minAge = int.tryParse(parts[0].trim()) ?? 0;
-      maxAge = int.tryParse(parts[1].trim()) ?? 99;
+      return age;
+    } catch (_) {
+      return 0;
     }
   }
 
-  // Activity gender
-  String activityGender = activityData["gender"] ?? "both";
+  // ---------------------------------------------------------
+  // ✅ ELIGIBILITY LOGIC (MATCHES BACKEND 100%)
+  // ---------------------------------------------------------
+  Map<String, dynamic> checkEligibility(Map<String, dynamic> child) {
+    List<String> reasons = [];
 
-  // Age check
-  if (age < minAge || age > maxAge) {
-    reasons.add("العمر غير مناسب: المطلوب من $minAge إلى $maxAge سنة.");
+    // -------- CHILD AGE --------
+    int age = 0;
+
+    if (child["birthdate"] != null) {
+      age = _calculateAge(child["birthdate"]);
+    } else if (child["age"] != null) {
+      age = child["age"] is int
+          ? child["age"]
+          : int.tryParse(child["age"].toString()) ?? 0;
+    }
+
+    // -------- CHILD GENDER --------
+    String gender =
+        (child["gender"] ?? "unknown").toString().toLowerCase();
+
+    // -------- ACTIVITY AGE RANGE (POSTGRES COMPATIBLE) --------
+    int minAge = int.tryParse(activityData["age_from"].toString()) ?? 0;
+    int maxAge = int.tryParse(activityData["age_to"].toString()) ?? 99;
+
+    // -------- ACTIVITY GENDER --------
+    String activityGender =
+        (activityData["gender"] ?? "both").toString().toLowerCase();
+
+    // -------- AGE CHECK --------
+    if (age < minAge || age > maxAge) {
+      reasons.add(
+          "العمر غير مناسب: المطلوب من $minAge إلى $maxAge سنة.");
+    }
+
+    // -------- GENDER CHECK --------
+    if (activityGender != "both" && gender != activityGender) {
+      reasons.add("الجنس غير مناسب لهذا النشاط.");
+    }
+
+    return {
+      "isEligible": reasons.isEmpty,
+      "reasons": reasons,
+    };
   }
-
-  // Gender check
-  if (activityGender != "both" && gender != activityGender) {
-    reasons.add("الجنس غير مناسب لهذا النشاط.");
-  }
-
-  return {
-    "isEligible": reasons.isEmpty,
-    "reasons": reasons,
-  };
-}
-
-
 
   // ---------------------------------------------------------
   @override
@@ -90,7 +108,8 @@ class SelectChildScreen extends StatelessWidget {
                 final result = checkEligibility(child);
 
                 final bool eligible = result["isEligible"];
-                final List<String> reasons = result["reasons"];
+                final List<String> reasons =
+                    List<String>.from(result["reasons"]);
 
                 return GestureDetector(
                   onTap: () {
@@ -102,7 +121,8 @@ class SelectChildScreen extends StatelessWidget {
                           content: Column(
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: reasons.map((r) => Text("• $r")).toList(),
+                            children:
+                                reasons.map((r) => Text("• $r")).toList(),
                           ),
                           actions: [
                             TextButton(
@@ -154,7 +174,8 @@ class SelectChildScreen extends StatelessWidget {
                                 : Colors.grey.shade400,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.child_care, size: 30),
+                          child:
+                              const Icon(Icons.child_care, size: 30),
                         ),
 
                         const SizedBox(width: 16),
@@ -165,8 +186,9 @@ class SelectChildScreen extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color:
-                                  eligible ? Colors.black : Colors.grey.shade700,
+                              color: eligible
+                                  ? Colors.black
+                                  : Colors.grey.shade700,
                             ),
                           ),
                         ),

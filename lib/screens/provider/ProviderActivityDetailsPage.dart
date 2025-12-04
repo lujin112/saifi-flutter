@@ -1,24 +1,104 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../service/theme.dart';
+import '../service/api_service.dart';
 import 'ProviderBookingsPage.dart';
 
-class ProviderActivityDetailsPage extends StatelessWidget {
-  final String activityId;
+class ProviderActivityDetailsPage extends StatefulWidget {
+  final String? activityId; // ✅ الآن يقبل null
 
   const ProviderActivityDetailsPage({
     super.key,
-    required this.activityId,
+    this.activityId,
   });
+
+  @override
+  State<ProviderActivityDetailsPage> createState() =>
+      _ProviderActivityDetailsPageState();
+}
+
+class _ProviderActivityDetailsPageState
+    extends State<ProviderActivityDetailsPage> {
+  String? loggedProviderId;
+  Map<String, dynamic>? activityData;
+  bool isLoading = true;
+  String? errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _initPage();
+  }
+
+  Future<void> _initPage() async {
+    final prefs = await SharedPreferences.getInstance();
+    loggedProviderId = prefs.getString("provider_id");
+
+    print("🧠 LOGGED PROVIDER ID: $loggedProviderId");
+    print("🧠 SENT ACTIVITY ID: ${widget.activityId}");
+
+    if (loggedProviderId == null) {
+      setState(() {
+        errorMessage = "Provider not logged in";
+        isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      // ✅ إذا جاء ID من الصفحة السابقة
+      if (widget.activityId != null &&
+          widget.activityId!.trim().isNotEmpty) {
+        final data =
+            await ApiService.getActivityById(widget.activityId!);
+
+        if (data["provider_id"] != loggedProviderId) {
+          throw Exception("Unauthorized activity access");
+        }
+
+        setState(() {
+          activityData = data;
+          isLoading = false;
+        });
+        return;
+      }
+
+      // ✅ إذا ما جاء ID (نجيب أول Activity للبروفايدر)
+      final providerActivities =
+          await ApiService.getProviderActivities(
+              loggedProviderId!);
+
+      if (providerActivities.isEmpty) {
+        setState(() {
+          errorMessage = "No activities found for this provider";
+          isLoading = false;
+        });
+        return;
+      }
+
+      setState(() {
+        activityData = providerActivities.first;
+        isLoading = false;
+      });
+    } catch (e) {
+      print("❌ DETAILS PAGE ERROR: $e");
+      setState(() {
+        errorMessage = "Failed to load activity";
+        isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return ThemedBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
+
+        // ✅ AppBar ثابت بالثيم
         appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
           title: const Text(
             "Activity Details",
             style: TextStyle(
@@ -26,154 +106,104 @@ class ProviderActivityDetailsPage extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
+          elevation: 2,
         ),
 
-        body: FutureBuilder<DocumentSnapshot>(
-          future: FirebaseFirestore.instance
-              .collection("activities")
-              .doc(activityId)
-              .get(),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData) {
-              return const Center(
-                child: CircularProgressIndicator(color: Colors.white),
-              );
-            }
-
-            if (!snapshot.data!.exists) {
-              return const Center(
-                child: Text(
-                  "Activity not found!",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontFamily: 'RobotoMono',
-                  ),
-                ),
-              );
-            }
-
-            final activityData = snapshot.data!.data() as Map<String, dynamic>;
-            final providerId = activityData["provider_id"];
-
-            return FutureBuilder<DocumentSnapshot>(
-              future: FirebaseFirestore.instance
-                  .collection("providers")
-                  .doc(providerId)
-                  .get(),
-              builder: (context, providerSnapshot) {
-                if (!providerSnapshot.hasData) {
-                  return const Center(
-                    child: CircularProgressIndicator(color: Colors.white),
-                  );
-                }
-
-                final providerData =
-                    providerSnapshot.data!.data() as Map<String, dynamic>?;
-
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.92),
-                      borderRadius: BorderRadius.circular(18),
+        body: isLoading
+            ? const Center(
+                child:
+                    CircularProgressIndicator(color: Colors.white),
+              )
+            : errorMessage != null
+                ? Center(
+                    child: Text(
+                      errorMessage!,
+                      style: const TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // ACTIVITY TITLE
-                        Text(
-                          activityData["title"] ?? "",
-                          style: const TextStyle(
-                            fontFamily: 'RobotoMono',
-                            fontWeight: FontWeight.w700,
-                            fontSize: 22,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        const SizedBox(height: 15),
+                  )
+                : _buildActivityContent(),
+      ),
+    );
+  }
 
-                        _infoSection("Description", activityData["description"]),
-                        _infoSection("Activity Type", activityData["activity_type"]),
-                        _infoSection("Price", "${activityData["price_sar"]} SAR"),
-                        _infoSection("Capacity",
-                            activityData["capacity"].toString()),
-                        _infoSection("Duration",
-                            "${activityData["duration_hours"]} hours"),
-                        _infoSection("Status", activityData["activity_status"]),
-                        _infoSection(
-                          "Age Ranges",
-                          (activityData["age_ranges"] as List?)
-                                  ?.join(", ") ??
-                              "",
-                        ),
-                        _infoSection("Start Date", activityData["start_date"]),
-                        _infoSection("End Date", activityData["end_date"]),
+  Widget _buildActivityContent() {
+    final a = activityData!;
 
-                        const SizedBox(height: 30),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Container(
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.95),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: AppColors.primary,
+            width: 1.2,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              a["title"] ?? "",
+              style: const TextStyle(
+                fontFamily: 'RobotoMono',
+                fontWeight: FontWeight.w700,
+                fontSize: 22,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(height: 18),
 
-                        // ============= PROVIDER INFO =============
-                        const Text(
-                          "Provider Information",
-                          style: TextStyle(
-                            fontFamily: 'RobotoMono',
-                            fontWeight: FontWeight.w700,
-                            fontSize: 20,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
+            _infoSection("Description", a["description"] ?? "-"),
+            _infoSection("Type", a["type"] ?? "-"),
+            _infoSection("Price", "${a["price"]} SAR"),
+            _infoSection("Capacity", "${a["capacity"] ?? "-"}"),
+            _infoSection(
+                "Duration", "${a["duration"] ?? "-"} hours"),
+            _infoSection(
+                "Status", a["status"] == true ? "Active" : "Inactive"),
+            _infoSection(
+                "Age Range", "${a["age_from"]} - ${a["age_to"]}"),
+            _infoSection("Start Date",
+                a["start_date"]?.toString() ?? "-"),
+            _infoSection("End Date",
+                a["end_date"]?.toString() ?? "-"),
 
-                        if (providerData != null) ...[
-                          _infoSection("Provider Name",
-                              "${providerData["first_name"]} ${providerData["last_name"]}"),
-                          _infoSection("Phone", providerData["phone"]),
-                          _infoSection("Email", providerData["email"]),
-                          _infoSection("Commercial Registration",
-                              providerData["cr_number"] ?? "N/A"),
-                          _infoSection("Location",
-                              "Lat: ${providerData["location"]["lat"]}, Lng: ${providerData["location"]["lng"]}"),
-                        ] else
-                          const Text(
-                            "Provider not found.",
-                            style: TextStyle(
-                              color: Colors.red,
-                              fontFamily: 'RobotoMono',
-                            ),
-                          ),
+            const SizedBox(height: 30),
 
-                        const SizedBox(height: 30),
-
-                        // VIEW BOOKINGS BUTTON
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            minimumSize: const Size(double.infinity, 45),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    ProviderBookingsPage(activityId: activityId),
-                              ),
-                            );
-                          },
-                          child: const Text(
-                            "View Bookings",
-                            style: TextStyle(fontFamily: 'RobotoMono'),
-                          ),
-                        ),
-                      ],
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                minimumSize:
+                    const Size(double.infinity, 48),
+                shape: RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ProviderBookingsPage(
+                      activityId: a["activity_id"],
                     ),
                   ),
                 );
               },
-            );
-          },
+              child: const Text(
+                "View Bookings",
+                style: TextStyle(
+                  fontFamily: 'RobotoMono',
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -181,7 +211,7 @@ class ProviderActivityDetailsPage extends StatelessWidget {
 
   Widget _infoSection(String title, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 15),
+      padding: const EdgeInsets.only(bottom: 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -191,7 +221,7 @@ class ProviderActivityDetailsPage extends StatelessWidget {
               fontFamily: 'RobotoMono',
               fontSize: 14,
               fontWeight: FontWeight.w700,
-              color: Colors.black,
+              color: AppColors.primary,
             ),
           ),
           const SizedBox(height: 4),
@@ -200,7 +230,7 @@ class ProviderActivityDetailsPage extends StatelessWidget {
             style: const TextStyle(
               fontFamily: 'RobotoMono',
               fontSize: 14,
-              color: Colors.black87,
+              color: AppColors.primary,
             ),
           ),
         ],

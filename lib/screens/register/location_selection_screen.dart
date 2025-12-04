@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geocoding/geocoding.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../service/theme.dart';
+import '../service/api_service.dart';
 import '../home/HomeScreen.dart';
 
 class LocationSelectionScreen extends StatefulWidget {
@@ -16,19 +17,25 @@ class LocationSelectionScreen extends StatefulWidget {
 }
 
 class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
-  Position? _currentPosition;
   LatLng? _selectedLatLng;
 
   bool _isLoading = false;
-  bool _locationConfirmed = false;
+  bool _locationSaved = false;
 
   GoogleMapController? _mapController;
   Set<Marker> _markers = {};
 
   final TextEditingController _searchController = TextEditingController();
 
-  // ✅ زر Use Current Location
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  // ✅ تحديد الموقع الحالي
   Future<void> _getCurrentLocation() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
 
     try {
@@ -45,11 +52,10 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
         desiredAccuracy: LocationAccuracy.high,
       );
 
-      _currentPosition = now;
       _selectedLatLng = LatLng(now.latitude, now.longitude);
-
       _updateMapMarker(_selectedLatLng!);
-    } catch (_) {
+    } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Couldn't detect location"),
@@ -57,6 +63,7 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
         ),
       );
     } finally {
+      if (!mounted) return;
       setState(() => _isLoading = false);
     }
   }
@@ -71,18 +78,17 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
 
       if (locations.isNotEmpty) {
         final loc = locations.first;
-
         _selectedLatLng = LatLng(loc.latitude, loc.longitude);
         _updateMapMarker(_selectedLatLng!);
       }
     } catch (_) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Location not found")),
       );
     }
   }
 
-  // ✅ تحديث الماركر
   void _updateMapMarker(LatLng latLng) {
     setState(() {
       _markers = {
@@ -98,37 +104,62 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
     );
   }
 
-  // ✅ تأكيد الموقع
-  Future<void> _confirmLocation() async {
-    if (_selectedLatLng == null) return;
+  // ✅ حفظ الموقع فقط
+  Future<void> _saveLocation() async {
+    if (_selectedLatLng == null || _isLoading) return;
 
-    final uid = FirebaseAuth.instance.currentUser!.uid;
+    setState(() => _isLoading = true);
 
-    await FirebaseFirestore.instance.collection("parents").doc(uid).update({
-      "location": {
-        "lat": _selectedLatLng!.latitude,
-        "lng": _selectedLatLng!.longitude,
-      },
-    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final parentId = prefs.getString("parent_id");
 
-    setState(() => _locationConfirmed = true);
+      if (parentId == null || parentId.isEmpty) {
+        throw Exception("Parent not logged in");
+      }
+
+      await ApiService.updateParentLocation(
+        parentId: parentId,
+        lat: _selectedLatLng!.latitude,
+        lng: _selectedLatLng!.longitude,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _locationSaved = true;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to save location: $e")),
+      );
+    } finally {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+    }
   }
 
-  void _goHome() async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-    final doc = await FirebaseFirestore.instance
-        .collection("parents")
-        .doc(uid)
-        .get();
-    final data = doc.data() ?? {};
-    String name = "${data["first_name"] ?? ""} ${data["last_name"] ?? ""}"
-        .trim();
+  // ✅ الانتقال إلى الهوم بدون استدعاء API
+  Future<void> _goHome() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
 
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => HomeScreen(userName: name)),
-      (_) => false,
-    );
+      final String name =
+          prefs.getString("parent_name") ?? "Parent";
+
+      if (!mounted) return;
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => HomeScreen(userName: name)),
+        (_) => false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Navigation error: $e")),
+      );
+    }
   }
 
   @override
@@ -145,7 +176,6 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
           padding: const EdgeInsets.all(20),
           child: Column(
             children: [
-              // 🔍 البحث
               TextFormField(
                 controller: _searchController,
                 decoration: InputDecoration(
@@ -159,18 +189,13 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
 
               const SizedBox(height: 12),
 
-              // 📍 زر الموقع الحالي
               ShinyButton(
                 text: _isLoading ? "Locating..." : "Use Current Location",
-                onPressed: () {
-                  if (_isLoading) return;
-                  _getCurrentLocation();
-                },
+                onPressed: _isLoading ? null : _getCurrentLocation,
               ),
 
               const SizedBox(height: 20),
 
-              // 🗺️ الخريطة
               Expanded(
                 child: GoogleMap(
                   onMapCreated: (c) => _mapController = c,
@@ -180,7 +205,7 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
                   ),
                   markers: _markers,
                   myLocationEnabled: true,
-                  onTap: (latLng) async {
+                  onTap: (latLng) {
                     _selectedLatLng = latLng;
                     _updateMapMarker(latLng);
                   },
@@ -189,14 +214,15 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
 
               const SizedBox(height: 20),
 
-              // ✅ تأكيد
-              ShinyButton(
-                text: "Confirm Location",
-                onPressed: _confirmLocation,
-              ),
+              if (!_locationSaved)
+                ShinyButton(
+                  text: _isLoading ? "Saving..." : "Save Location",
+                  onPressed:
+                      _isLoading || _selectedLatLng == null ? null : _saveLocation,
+                ),
 
-              if (_locationConfirmed) ...[
-                const SizedBox(height: 20),
+              if (_locationSaved) ...[
+                const SizedBox(height: 12),
                 ShinyButton(text: "Go Home", onPressed: _goHome),
               ],
             ],

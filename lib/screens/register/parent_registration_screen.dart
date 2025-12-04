@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:crypto/crypto.dart';
-import 'dart:convert';
-
+import 'package:shared_preferences/shared_preferences.dart';
 import '../service/theme.dart';
+import '../service/api_service.dart';
 import 'ChildInfoScreen.dart';
 
 class ParentRegistrationScreen extends StatefulWidget {
@@ -27,402 +24,7 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
 
   final List<Map<String, dynamic>> _children = [];
   bool _acceptedTerms = false;
-
-  final List<String> _emailDomains = [
-    '@gmail.com',
-    '@hotmail.com',
-    '@outlook.com',
-    '@yahoo.com',
-    '@icloud.com'
-  ];
-
-  // HASH FUNCTION
-  String hashPassword(String password) {
-    final bytes = utf8.encode(password);
-    final digest = sha256.convert(bytes);
-    return digest.toString();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ThemedBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          title: const Text(
-            'Parent Registration',
-            style: TextStyle(
-              fontFamily: 'RobotoMono',
-              fontWeight: FontWeight.w600,
-              fontSize: 20,
-            ),
-          ),
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-          centerTitle: true,
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                Image.asset(
-                  'assets/parentReg.png',
-                  height: 140,
-                  fit: BoxFit.contain,
-                ),
-                const SizedBox(height: 25),
-
-                Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      // FIRST + LAST NAME
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildTextField(
-                              controller: _firstNameController,
-                              label: 'First Name',
-                              maxLength: 15,
-                            ),
-                          ),
-                          const SizedBox(width: 15),
-                          Expanded(
-                            child: _buildTextField(
-                              controller: _lastNameController,
-                              label: 'Last Name',
-                              maxLength: 15,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 15),
-
-                      // PHONE
-                      _buildTextField(
-                        controller: _phoneController,
-                        label: 'Phone Number',
-                        keyboardType: TextInputType.phone,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(10),
-                        ],
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter phone number';
-                          }
-                          if (value.length != 10) {
-                            return 'Phone must be exactly 10 digits';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 15),
-
-                      // EMAIL
-                      _buildTextField(
-                        controller: _emailController,
-                        label: 'Email',
-                        keyboardType: TextInputType.emailAddress,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter email';
-                          }
-                          if (!_emailDomains.any((domain) => value.endsWith(domain))) {
-                            return 'Email must end with ${_emailDomains.join(", ")}';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 15),
-
-                      // PASSWORD
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: true,
-                        style: const TextStyle(fontFamily: 'RobotoMono'),
-                        decoration: InputDecoration(
-                          labelText: 'Password',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter password';
-                          }
-                          if (value.length < 8 ||
-                              !RegExp(r'[A-Z]').hasMatch(value) ||
-                              !RegExp(r'[a-z]').hasMatch(value) ||
-                              !RegExp(r'[0-9]').hasMatch(value)) {
-                            return 'Password does not meet requirements';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 25),
-
-                      // ADD CHILD
-                      ShinyButton(
-                        text: "Add Child",
-                        onPressed: _showAddChildDialog,
-                      ),
-                      const SizedBox(height: 20),
-
-                      // CHILD LIST
-                      if (_children.isNotEmpty)
-                        ..._children.map((child) => ListTile(
-                              leading: CircleAvatar(
-                                radius: 24,
-                                backgroundColor:
-                                    AppColors.primary.withOpacity(0.2),
-                                child: Icon(
-                                  child['gender'] == 'Male'
-                                      ? Icons.boy_rounded
-                                      : Icons.girl_rounded,
-                                  color: AppColors.primary,
-                                  size: 28,
-                                ),
-                              ),
-                              title: Text(
-                                "${child['firstName']} ${child['lastName']}",
-                                style: const TextStyle(
-                                  fontFamily: 'RobotoMono',
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              subtitle: Text(
-                                "Gender: ${child['gender']}",
-                                style:
-                                    const TextStyle(fontFamily: 'RobotoMono'),
-                              ),
-                            )),
-
-                      const SizedBox(height: 25),
-
-                      Row(
-                        children: [
-                          Checkbox(
-                            value: _acceptedTerms,
-                            activeColor: AppColors.primary,
-                            onChanged: (value) =>
-                                setState(() => _acceptedTerms = value ?? false),
-                          ),
-                          const Text("Accept Terms"),
-                          TextButton(
-                            onPressed: _showTermsPopup,
-                            child: const Text(
-                              "View Terms",
-                              style: TextStyle(color: Colors.blue),
-                            ),
-                          )
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-
-                      ShinyButton(
-                        text: "Complete Child Information",
-                        onPressed: () {
-                          if (!_acceptedTerms) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("You must accept the Terms."),
-                              ),
-                            );
-                            return;
-                          }
-                          _registerParent();
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ====== TERMS POPUP FUNCTION (برّا الـ build، مو جوّا الزر) ======
-  void _showTermsPopup() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text("Terms & Conditions"),
-          content: const SingleChildScrollView(
-            child: Text(
-              "- Providers are responsible for activity details and safety.\n"
-              "- Bookings and refunds follow provider policies.\n"
-              "- Saffi is a platform only; we do not run the activities.\n"
-              "- You must provide accurate information.\n"
-              "- Location may be used to improve services.\n"
-              "- Saffi is not responsible for incidents or provider delays.\n",
-              style: TextStyle(fontSize: 14),
-            ),
-          ),
-          actions: [
-            TextButton(
-              child: const Text("Close"),
-              onPressed: () => Navigator.pop(context),
-            )
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _registerParent() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    try {
-      final auth = FirebaseAuth.instance;
-
-      final userCredential = await auth.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
-
-      final uid = userCredential.user!.uid;
-
-      await FirebaseFirestore.instance.collection("parents").doc(uid).set({
-        "user_uid": uid,
-        "first_name": _firstNameController.text.trim(),
-        "last_name": _lastNameController.text.trim(),
-        "email": _emailController.text.trim(),
-        "phone": _phoneController.text.trim(),
-        "children_count": _children.length,
-        "password_hash": hashPassword(_passwordController.text.trim()),
-        "created_at": FieldValue.serverTimestamp(),
-        "location": {"lat": 0, "lng": 0},
-      });
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ChildInfoScreen(children: _children),
-        ),
-      );
-    } catch (e) {
-      _showMessage(context, "Registration Error", e.toString());
-    }
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    TextInputType keyboardType = TextInputType.text,
-    List<TextInputFormatter>? inputFormatters,
-    bool obscureText = false,
-    int? maxLength,
-    String? Function(String?)? validator,
-  }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      inputFormatters: inputFormatters,
-      obscureText: obscureText,
-      maxLength: maxLength,
-      style: const TextStyle(fontFamily: 'RobotoMono'),
-      decoration: InputDecoration(
-        labelText: label,
-        counterText: "",
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        filled: true,
-        fillColor: AppColors.white,
-      ),
-      validator: validator ??
-          (value) =>
-              value == null || value.isEmpty ? 'Please enter $label' : null,
-    );
-  }
-
-  void _showAddChildDialog() {
-    final TextEditingController childFirstNameController =
-        TextEditingController();
-    final TextEditingController childLastNameController =
-        TextEditingController();
-    String? selectedGender;
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Add Child Information'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildTextField(
-                controller: childFirstNameController,
-                label: 'Child First Name',
-                maxLength: 15,
-              ),
-              const SizedBox(height: 15),
-              _buildTextField(
-                controller: childLastNameController,
-                label: 'Child Last Name',
-                maxLength: 15,
-              ),
-              const SizedBox(height: 15),
-              DropdownButtonFormField<String>(
-                decoration: const InputDecoration(
-                  labelText: 'Gender',
-                  border: OutlineInputBorder(),
-                ),
-                items: const [
-                  DropdownMenuItem(value: 'Male', child: Text('Male')),
-                  DropdownMenuItem(value: 'Female', child: Text('Female')),
-                ],
-                onChanged: (value) => selectedGender = value,
-                validator: (value) => value == null ? 'Select gender' : null,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            ShinyButton(
-              text: "Add Child",
-              onPressed: () {
-                if (childFirstNameController.text.isNotEmpty &&
-                    childLastNameController.text.isNotEmpty &&
-                    selectedGender != null) {
-                  setState(() {
-                    _children.add({
-                      'firstName': childFirstNameController.text,
-                      'lastName': childLastNameController.text,
-                      'gender': selectedGender,
-                    });
-                  });
-                  Navigator.of(context).pop();
-                }
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showMessage(BuildContext context, String title, String message) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK')),
-        ],
-      ),
-    );
-  }
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -432,5 +34,445 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
     _lastNameController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ThemedBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: const Text('Parent Registration'),
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          centerTitle: true,
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(20),
+          child: SingleChildScrollView(
+            child: Form(
+              key: _formKey,
+              child: Column(
+                children: [
+                  // ✅ الصورة بالأعلى
+                  Image.asset(
+                    "assets/parentReg.png",
+                    height: 160,
+                    fit: BoxFit.contain,
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  _buildRowNames(),
+                  const SizedBox(height: 15),
+                  _buildPhone(),
+                  const SizedBox(height: 15),
+                  _buildEmail(),
+                  const SizedBox(height: 15),
+                  _buildPassword(),
+
+                  const SizedBox(height: 25),
+                  ShinyButton(
+                    text: "Add Child",
+                    onPressed: _showAddChildDialog,
+                  ),
+                  const SizedBox(height: 20),
+
+                  if (_children.isNotEmpty)
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: List.generate(_children.length, (index) {
+                        final child = _children[index];
+
+                        return Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppColors.primary),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                child['gender'] == 'Male'
+                                    ? Icons.boy
+                                    : Icons.girl,
+                                color: AppColors.primary,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "${child['firstName']} ${child['lastName']}",
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    Text("Gender: ${child['gender']}"),
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete,
+                                  color: Colors.red,
+                                ),
+                                onPressed: () => _confirmDeleteChild(index),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ),
+
+                  const SizedBox(height: 25),
+
+                  // ✅ Checkbox + Terms & Conditions Popup
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Checkbox(
+                        value: _acceptedTerms,
+                        onChanged: (v) =>
+                            setState(() => _acceptedTerms = v ?? false),
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: _showTermsDialog,
+                          child: const Text.rich(
+                            TextSpan(
+                              text: "I have read and accept the ",
+                              children: [
+                                TextSpan(
+                                  text: "Saifi Terms & Conditions",
+                                  style: TextStyle(
+                                    decoration: TextDecoration.underline,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  ShinyButton(
+                    text: "Create Account",
+                    onPressed: _registerParentAndChildren,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ================= COMPLETE REGISTRATION =================
+  Future<void> _registerParentAndChildren() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    if (!_acceptedTerms) {
+      if (!mounted) return;
+      _showMessage(
+        context,
+        "Error",
+        "You must accept the Saifi Terms & Conditions.",
+      );
+      return;
+    }
+
+    if (_children.isEmpty) {
+      if (!mounted) return;
+      _showMessage(context, "Error", "Add at least one child.");
+      return;
+    }
+
+    try {
+      final parentResult = await ApiService.registerParent(
+        firstName: _firstNameController.text.trim(),
+        lastName: _lastNameController.text.trim(),
+        email: _emailController.text.trim(),
+        phone: _phoneController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      final parentId = parentResult["parent_id"].toString();
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString("parent_id", parentId);
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChildInfoScreen(children: _children),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage(context, "Registration Failed", e.toString());
+    }
+  }
+
+  // ================= TERMS & CONDITIONS POPUP =================
+  void _showTermsDialog() {
+    const String termsText = '''
+Welcome to Saifi!
+
+By creating an account and using the Saifi platform, you agree to the following:
+
+1. Purpose of Saifi
+Saifi helps parents discover, compare, and book summer activities for their children. Saifi is a mediator between parents and activity providers, and does not directly operate or manage the activities.
+
+2. Parent Responsibility
+• You are responsible for providing accurate information about yourself and your children.
+• You are responsible for reviewing activity details (location, timing, age suitability, price, risks) before booking.
+• You are responsible for your child's behavior and safety outside the scope of the activity provider's premises and rules.
+
+3. Activity Provider Responsibility
+• Activity providers are solely responsible for the quality, safety, and delivery of their activities.
+• Any complaints, incidents, or refunds related to the activity itself should be directed to the provider.
+
+4. Payments & Cancellations
+• Some activities may have their own payment and cancellation policies.
+• It is your responsibility to read and accept those policies before confirming a booking.
+
+5. Limitation of Liability
+• Saifi is not liable for any direct or indirect damages, injuries, delays, cancellations, or disputes arising between you and any activity provider.
+• Your use of the platform is at your own risk.
+
+6. Data & Privacy
+• Saifi may store your data (such as name, contact details, child profile, and booking history) to improve the service.
+• Location data may be used to show activities near you and to enhance recommendations.
+
+7. Communication
+• Saifi may contact you via email, SMS, or in-app notifications for important updates, booking confirmations, and service improvements.
+
+8. Changes to Terms
+• Saifi may update these Terms & Conditions from time to time. Continued use of the platform means you accept the latest version.
+
+By pressing "I Agree", you confirm that you have read and understood the Saifi Terms & Conditions and agree to be bound by them.
+''';
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Saifi Terms & Conditions"),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: const Text(
+              termsText,
+              textAlign: TextAlign.left,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Close"),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() => _acceptedTerms = true);
+              Navigator.pop(context);
+            },
+            child: const Text(
+              "I Agree",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ================= ADD CHILD POPUP =================
+  void _showAddChildDialog() {
+    final TextEditingController f = TextEditingController();
+    final TextEditingController l = TextEditingController();
+    String? g;
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Add Child"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _basicField(f, "First Name"),
+            const SizedBox(height: 10),
+            _basicField(l, "Last Name"),
+            const SizedBox(height: 10),
+            DropdownButtonFormField(
+              items: const [
+                DropdownMenuItem(value: "Male", child: Text("Male")),
+                DropdownMenuItem(value: "Female", child: Text("Female")),
+              ],
+              onChanged: (v) => g = v,
+              decoration: const InputDecoration(labelText: "Gender"),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () {
+              if (f.text.isNotEmpty && l.text.isNotEmpty && g != null) {
+                setState(() {
+                  _children.add({
+                    "firstName": f.text.trim(),
+                    "lastName": l.text.trim(),
+                    "gender": g!,
+                  });
+                });
+
+                Navigator.pop(context);
+              }
+            },
+            child: const Text("Add"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ================= DELETE CHILD =================
+  void _confirmDeleteChild(int index) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Delete Child"),
+        content: const Text("Are you sure you want to delete this child?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _children.removeAt(index);
+              });
+              Navigator.pop(context);
+            },
+            child: const Text(
+              "Delete",
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ================= UI HELPERS =================
+  Widget _buildRowNames() {
+    return Row(
+      children: [
+        Expanded(
+          child: _basicField(_firstNameController, "First Name"),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _basicField(_lastNameController, "Last Name"),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPhone() {
+    return TextFormField(
+      controller: _phoneController,
+      keyboardType: TextInputType.phone,
+      inputFormatters: [
+        FilteringTextInputFormatter.digitsOnly,
+        LengthLimitingTextInputFormatter(10),
+      ],
+      decoration: const InputDecoration(labelText: "Phone"),
+      validator: (v) {
+        if (v == null || v.isEmpty) return "Required";
+        if (v.length != 10) return "Phone must be 10 digits";
+        return null;
+      },
+    );
+  }
+
+  Widget _buildEmail() {
+    return TextFormField(
+      controller: _emailController,
+      keyboardType: TextInputType.emailAddress,
+      decoration: const InputDecoration(labelText: "Email"),
+      validator: (v) {
+        if (v == null || v.isEmpty) return "Required";
+
+        final email = v.trim();
+
+        if (!email.contains('@')) {
+          return "Email must contain @";
+        }
+
+        if (!email.endsWith('.com')) {
+          return "Email must end with .com";
+        }
+
+        return null;
+      },
+    );
+  }
+
+  Widget _buildPassword() {
+    return TextFormField(
+      controller: _passwordController,
+      obscureText: _obscurePassword,
+      decoration: InputDecoration(
+        labelText: "Password",
+        suffixIcon: IconButton(
+          icon: Icon(
+            _obscurePassword ? Icons.visibility_off : Icons.visibility,
+          ),
+          onPressed: () =>
+              setState(() => _obscurePassword = !_obscurePassword),
+        ),
+      ),
+      validator: (v) =>
+          v == null || v.isEmpty ? "Required" : null,
+    );
+  }
+
+  Widget _basicField(TextEditingController c, String lbl,
+      {TextInputType keyboardType = TextInputType.text}) {
+    return TextFormField(
+      controller: c,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(labelText: lbl),
+      validator: (v) => v == null || v.isEmpty ? "Required" : null,
+    );
+  }
+
+  void _showMessage(BuildContext context, String title, String message) {
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+      ),
+    );
   }
 }

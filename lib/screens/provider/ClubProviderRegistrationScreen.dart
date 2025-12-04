@@ -1,13 +1,9 @@
-// club_provider_registration_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geocoding/geocoding.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:crypto/crypto.dart';
-import 'dart:convert';
-
+import 'package:shared_preferences/shared_preferences.dart';
+import '../service/api_service.dart';
 import 'activity_registration_screen.dart';
 
 class ClubProviderRegistrationScreen extends StatefulWidget {
@@ -21,7 +17,6 @@ class ClubProviderRegistrationScreen extends StatefulWidget {
 class _ClubProviderRegistrationScreenState
     extends State<ClubProviderRegistrationScreen>
     with SingleTickerProviderStateMixin {
-
   final _formKey = GlobalKey<FormState>();
 
   final TextEditingController _providerNameController = TextEditingController();
@@ -31,14 +26,8 @@ class _ClubProviderRegistrationScreenState
   final TextEditingController _searchController = TextEditingController();
 
   bool _isEmailMode = true;
-
-  final List<String> _emailDomains = [
-    '@gmail.com',
-    '@hotmail.com',
-    '@outlook.com',
-    '@yahoo.com',
-    '@icloud.com'
-  ];
+  bool _obscurePassword = true;
+  bool _isRegistering = false;
 
   late AnimationController _arrowController;
   late Animation<double> _arrowAnimation;
@@ -55,7 +44,7 @@ class _ClubProviderRegistrationScreenState
       duration: const Duration(milliseconds: 700),
     )..repeat(reverse: true);
 
-    _arrowAnimation = Tween<double>(begin: 0, end: 10).animate(
+    _arrowAnimation = Tween<double>(begin: 0, end: 8).animate(
       CurvedAnimation(parent: _arrowController, curve: Curves.easeInOut),
     );
   }
@@ -71,20 +60,12 @@ class _ClubProviderRegistrationScreenState
     super.dispose();
   }
 
-  // 🔐 PASSWORD HASH FUNCTION
-  String hashPassword(String password) {
-    final bytes = utf8.encode(password);
-    final digest = sha256.convert(bytes);
-    return digest.toString();
-  }
-
-  // 🔍 البحث عن الموقع بالاسم
+  // 🔍 Search location
   Future<void> _searchLocation() async {
     if (_searchController.text.isEmpty) return;
 
     try {
-      List<Location> locations =
-          await locationFromAddress(_searchController.text);
+      final locations = await locationFromAddress(_searchController.text);
 
       if (locations.isNotEmpty) {
         final loc = locations.first;
@@ -98,64 +79,87 @@ class _ClubProviderRegistrationScreenState
           CameraUpdate.newLatLng(_selectedLatLng!),
         );
       }
-    } catch (e) {
+    } catch (_) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Location not found")),
       );
     }
   }
 
+  // ✅ REGISTER (DIAGNOSTIC VERSION)
   Future<void> _register() async {
-    if (!_formKey.currentState!.validate()) return;
+    print("REGISTER BUTTON PRESSED");
 
-    final auth = FirebaseAuth.instance;
-    final firestore = FirebaseFirestore.instance;
+    if (!_formKey.currentState!.validate()) {
+      print("FORM VALIDATION FAILED");
+      return;
+    }
+
+    if (_selectedLatLng == null) {
+      print("LOCATION NOT SELECTED");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please select location")),
+      );
+      return;
+    }
+
+    if (_isRegistering) {
+      print("ALREADY REGISTERING");
+      return;
+    }
+
+    setState(() => _isRegistering = true);
 
     try {
-      UserCredential userCredential;
-
-      if (_isEmailMode) {
-        userCredential = await auth.createUserWithEmailAndPassword(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
-        );
-      } else {
-        userCredential = await auth.createUserWithEmailAndPassword(
-          email: "${_phoneController.text.trim()}@provider.saifi",
-          password: _passwordController.text.trim(),
-        );
-      }
-
-      String uid = userCredential.user!.uid;
-
-      Map<String, dynamic> providerData = {
-        'provider_id': uid,
-        'provider_name': _providerNameController.text.trim(),
-        'email': _isEmailMode ? _emailController.text.trim() : null,
-        'phone_number': _phoneController.text.trim(),
-        'password_hash': hashPassword(_passwordController.text.trim()),
-        'location': _selectedLatLng == null
-            ? null
-            : {
-                'latitude': _selectedLatLng!.latitude,
-                'longitude': _selectedLatLng!.longitude,
-                'address': _locationName,
-              },
-        'created_at': DateTime.now(),
+      final providerData = {
+        "name": _providerNameController.text.trim(),
+        "email": _isEmailMode ? _emailController.text.trim() : null,
+        "phone": !_isEmailMode ? _phoneController.text.trim() : null,
+        "password": _passwordController.text.trim(),
+        "location_lat": _selectedLatLng!.latitude,
+        "location_lng": _selectedLatLng!.longitude,
+        "address": _locationName,
       };
 
-      await firestore.collection('providers').doc(uid).set(providerData);
+      print("PROVIDER DATA: $providerData");
 
-      Navigator.push(
+      // 1️⃣ Register
+      print("BEFORE REGISTER API");
+      final registerResult =
+          await ApiService.registerProvider(providerData);
+      print("AFTER REGISTER API: $registerResult");
+
+      // 2️⃣ Login
+      print("BEFORE LOGIN API");
+      final loginResult = await ApiService.loginProvider(
+        email: _isEmailMode ? _emailController.text.trim() : null,
+        phone: !_isEmailMode ? _phoneController.text.trim() : null,
+        password: _passwordController.text.trim(),
+      );
+      print("AFTER LOGIN API: $loginResult");
+
+      // 3️⃣ Save in SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+          "provider_id", loginResult["provider_id"].toString());
+      await prefs.setString(
+          "provider_name", loginResult["name"].toString());
+
+      print("DATA SAVED IN SHARED PREFS");
+
+      Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => const ActivityRegistrationScreen(),
+          builder: (_) => const ActivityRegistrationScreen(),
         ),
       );
     } catch (e) {
+      print("REGISTER ERROR: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Registration error: $e")),
       );
+    } finally {
+      setState(() => _isRegistering = false);
     }
   }
 
@@ -176,11 +180,7 @@ class _ClubProviderRegistrationScreenState
             key: _formKey,
             child: Column(
               children: [
-                Image.asset(
-                  "assets/provider.png",
-                  height: 200,
-                  fit: BoxFit.contain,
-                ),
+                Image.asset("assets/provider.png", height: 200),
                 const SizedBox(height: 20),
 
                 TextFormField(
@@ -189,9 +189,10 @@ class _ClubProviderRegistrationScreenState
                     labelText: 'Provider Name',
                     border: OutlineInputBorder(),
                   ),
-                  validator: (value) =>
-                      value!.isEmpty ? 'Please enter provider name' : null,
+                  validator: (v) =>
+                      v == null || v.isEmpty ? 'Enter provider name' : null,
                 ),
+
                 const SizedBox(height: 20),
 
                 Row(
@@ -208,7 +209,6 @@ class _ClubProviderRegistrationScreenState
                     const Text("Phone"),
                   ],
                 ),
-                const SizedBox(height: 10),
 
                 if (_isEmailMode)
                   TextFormField(
@@ -217,14 +217,10 @@ class _ClubProviderRegistrationScreenState
                       labelText: 'Email',
                       border: OutlineInputBorder(),
                     ),
-                    keyboardType: TextInputType.emailAddress,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter email';
-                      }
-                      if (!_emailDomains
-                          .any((domain) => value.endsWith(domain))) {
-                        return 'Email must end with ${_emailDomains.join(", ")}';
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return 'Enter email';
+                      if (!v.contains('@') || !v.endsWith('.com')) {
+                        return 'Invalid email';
                       }
                       return null;
                     },
@@ -241,11 +237,8 @@ class _ClubProviderRegistrationScreenState
                       FilteringTextInputFormatter.digitsOnly,
                       LengthLimitingTextInputFormatter(10),
                     ],
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Enter phone number';
-                      }
-                      if (value.length != 10) {
+                    validator: (v) {
+                      if (v == null || v.length != 10) {
                         return 'Phone must be 10 digits';
                       }
                       return null;
@@ -256,18 +249,29 @@ class _ClubProviderRegistrationScreenState
 
                 TextFormField(
                   controller: _passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
                     labelText: 'Password',
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
+                      onPressed: () => setState(
+                        () => _obscurePassword = !_obscurePassword,
+                      ),
+                    ),
                   ),
                   validator: (v) =>
-                      v != null && v.length >= 8 ? null : 'Invalid password',
+                      v != null && v.length >= 8
+                          ? null
+                          : 'Password too short',
                 ),
 
                 const SizedBox(height: 20),
 
-                // 🔍 البحث عن الموقع
                 TextFormField(
                   controller: _searchController,
                   decoration: InputDecoration(
@@ -282,7 +286,6 @@ class _ClubProviderRegistrationScreenState
 
                 const SizedBox(height: 12),
 
-                // 🗺️ الخريطة المصغرة
                 Container(
                   height: 200,
                   decoration: BoxDecoration(
@@ -293,12 +296,10 @@ class _ClubProviderRegistrationScreenState
                     borderRadius: BorderRadius.circular(12),
                     child: GoogleMap(
                       initialCameraPosition: const CameraPosition(
-                        target: LatLng(24.7136, 46.6753), // الرياض
+                        target: LatLng(24.7136, 46.6753),
                         zoom: 12,
                       ),
-                      onMapCreated: (controller) {
-                        _mapController = controller;
-                      },
+                      onMapCreated: (c) => _mapController = c,
                       markers: _selectedLatLng == null
                           ? {}
                           : {
@@ -308,7 +309,10 @@ class _ClubProviderRegistrationScreenState
                               ),
                             },
                       onTap: (latLng) async {
-                        List<Placemark> placemarks =
+                        print(
+                            "MAP TAP: ${latLng.latitude}, ${latLng.longitude}");
+
+                        final placemarks =
                             await placemarkFromCoordinates(
                           latLng.latitude,
                           latLng.longitude,
@@ -336,31 +340,37 @@ class _ClubProviderRegistrationScreenState
                   alignment: Alignment.centerLeft,
                   child: Text(
                     _locationName,
-                    style:
-                        const TextStyle(fontSize: 13, color: Colors.grey),
+                    style: const TextStyle(
+                        fontSize: 13, color: Colors.grey),
                   ),
                 ),
 
                 const SizedBox(height: 30),
 
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: GestureDetector(
-                    onTap: _register,
-                    child: AnimatedBuilder(
-                      animation: _arrowAnimation,
-                      builder: (context, child) {
-                        return Padding(
-                          padding:
-                              EdgeInsets.only(right: _arrowAnimation.value),
+                // ✅ الزر بعد استبدال GestureDetector بـ InkWell
+                InkWell(
+                  onTap: _isRegistering ? null : _register,
+                  borderRadius: BorderRadius.circular(100),
+                  child: AnimatedBuilder(
+                    animation: _arrowAnimation,
+                    builder: (context, child) {
+                      return Container(
+                        width: 60,
+                        height: 60,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Color(0xFF80C4C0),
+                        ),
+                        child: Transform.translate(
+                          offset: Offset(_arrowAnimation.value - 4, 0),
                           child: const Icon(
                             Icons.arrow_forward,
-                            size: 48,
-                            color: Color(0xFF80C4C0),
+                            size: 32,
+                            color: Colors.white,
                           ),
-                        );
-                      },
-                    ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],

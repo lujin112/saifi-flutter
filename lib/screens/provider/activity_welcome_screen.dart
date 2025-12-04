@@ -1,18 +1,42 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../service/theme.dart';
 import '../register/role_selection_screen.dart';
 import 'activity_registration_screen.dart';
 import 'ProviderActivityDetailsPage.dart';
 import 'ProviderBookingsPage.dart';
+import 'provider_profile_page.dart';
 
-class ActivityWelcomeScreen extends StatelessWidget {
+class ActivityWelcomeScreen extends StatefulWidget {
   final Map<String, dynamic> activity;
 
   const ActivityWelcomeScreen({super.key, required this.activity});
 
+  @override
+  State<ActivityWelcomeScreen> createState() => _ActivityWelcomeScreenState();
+}
+
+class _ActivityWelcomeScreenState extends State<ActivityWelcomeScreen> {
+  String providerName = "Provider";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProviderName();
+  }
+
+  Future<void> _loadProviderName() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      providerName = prefs.getString("provider_name") ?? "Provider";
+    });
+  }
+
+  // ✅ تسجيل خروج
   Future<void> _logout(BuildContext context) async {
-    await FirebaseAuth.instance.signOut();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
@@ -22,17 +46,63 @@ class ActivityWelcomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String activityId = activity['activity_id'];
+    final String activityId =
+        widget.activity['activity_id']?.toString() ?? "";
 
     return ThemedBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
 
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          automaticallyImplyLeading: false,
+        // ✅ APP BAR WITH PROFILE + LOGOUT
+appBar: AppBar(
+  backgroundColor: AppColors.primary, // ✅ أخضر مثل الثيم
+  elevation: 0,
+  automaticallyImplyLeading: false,
+
+  // ⬅️ LOGOUT - LEFT
+  leading: Padding(
+    padding: const EdgeInsets.only(left: 12),
+    child: GestureDetector(
+      onTap: () => _logout(context),
+      child: CircleAvatar(
+        radius: 18,
+        backgroundColor: Colors.white.withOpacity(0.2),
+        child: const Icon(
+          Icons.logout,
+          color: Colors.white,
+          size: 20,
         ),
+      ),
+    ),
+  ),
+
+  // ➡️ PROFILE - RIGHT
+  actions: [
+    Padding(
+      padding: const EdgeInsets.only(right: 12),
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const ProviderProfilePage(),
+            ),
+          );
+        },
+        child: CircleAvatar(
+          radius: 18,
+          backgroundColor: Colors.white.withOpacity(0.2),
+          child: const Icon(
+            Icons.person,
+            color: Colors.white,
+            size: 22,
+          ),
+        ),
+      ),
+    ),
+  ],
+),
+
 
         body: Padding(
           padding: const EdgeInsets.all(24),
@@ -47,18 +117,28 @@ class ActivityWelcomeScreen extends StatelessWidget {
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      "Welcome, Provider!",
+                  children: [
+                    const Text(
+                      "Welcome,",
                       style: TextStyle(
+                        fontFamily: 'RobotoMono',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 18,
+                        color: Colors.black54,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      providerName,
+                      style: const TextStyle(
                         fontFamily: 'RobotoMono',
                         fontWeight: FontWeight.w700,
                         fontSize: 22,
                         color: AppColors.primary,
                       ),
                     ),
-                    SizedBox(height: 8),
-                    Text(
+                    const SizedBox(height: 8),
+                    const Text(
                       "Manage your activities easily.",
                       style: TextStyle(
                         fontFamily: 'RobotoMono',
@@ -116,8 +196,9 @@ class ActivityWelcomeScreen extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) =>
-                                ProviderBookingsPage(activityId: activityId),
+                            builder: (_) => ProviderBookingsPage(
+                              activityId: activityId,
+                            ),
                           ),
                         );
                       },
@@ -125,29 +206,6 @@ class ActivityWelcomeScreen extends StatelessWidget {
                   ],
                 ),
               ),
-
-              const SizedBox(height: 20),
-
-              // ================= LOGOUT ==================
-              Column(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.logout, color: Colors.red, size: 32),
-                    onPressed: () => _logout(context),
-                  ),
-                  const Text(
-                    "Logout",
-                    style: TextStyle(
-                      color: Colors.red,
-                      fontFamily: 'RobotoMono',
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 10),
             ],
           ),
         ),
@@ -155,7 +213,7 @@ class ActivityWelcomeScreen extends StatelessWidget {
     );
   }
 
-  // ============= CARD WIDGET (بدون مشاكل hover) ==============
+  // ============= CARD WIDGET ==============
   Widget _buildCard({
     required IconData icon,
     required String label,

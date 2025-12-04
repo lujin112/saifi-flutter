@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../service/theme.dart';
 import 'activity_welcome_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../service/api_service.dart';
 
 class ActivityRegistrationScreen extends StatefulWidget {
   const ActivityRegistrationScreen({super.key});
@@ -21,20 +21,13 @@ class _ActivityRegistrationScreenState
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _capacityController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
+  final TextEditingController _minAgeController = TextEditingController();
+  final TextEditingController _maxAgeController = TextEditingController();
 
   int? _selectedDuration;
-  final List<String> _selectedAgeRanges = [];
   String? _selectedActivityStatus;
   String? _selectedActivityType;
-
-  final List<String> _ageRanges = [
-    '3-5 years',
-    '6-8 years',
-    '9-12 years',
-    '13-15 years',
-    '16-18 years',
-    'All ages'
-  ];
+  String? _selectedGender;
 
   final List<int> _durations = [1, 2, 3, 4, 5, 6, 7, 8];
 
@@ -47,6 +40,8 @@ class _ActivityRegistrationScreenState
     'Technology',
     'Clubs & Activities'
   ];
+
+  final List<String> _genders = ['Male', 'Female', 'Both'];
 
   @override
   Widget build(BuildContext context) {
@@ -95,8 +90,11 @@ class _ActivityRegistrationScreenState
               const SizedBox(height: 20),
 
               _buildSectionTitle("Description"),
-              _buildTextArea(_descriptionController, 'Description',
-                  Icons.description_outlined),
+              _buildTextArea(
+                _descriptionController,
+                'Description',
+                Icons.description_outlined,
+              ),
               const SizedBox(height: 20),
 
               _buildSectionTitle("Duration & Dates"),
@@ -126,15 +124,18 @@ class _ActivityRegistrationScreenState
                 icon: Icons.timer_outlined,
                 value: _selectedDuration,
                 items: _durations,
-                itemBuilder: (d) => "$d ${d == 1 ? 'hour' : 'hours'}",
+                itemBuilder: (d) => "$d Hours",
                 onChanged: (val) => setState(() => _selectedDuration = val),
               ),
               const SizedBox(height: 20),
 
               _buildSectionTitle("Capacity & Price"),
-              _buildInput(_capacityController, 'Capacity',
-                  Icons.people_alt_outlined,
-                  inputType: TextInputType.number),
+              _buildInput(
+                _capacityController,
+                'Capacity',
+                Icons.people_alt_outlined,
+                inputType: TextInputType.number,
+              ),
               const SizedBox(height: 15),
 
               _buildInput(
@@ -145,8 +146,38 @@ class _ActivityRegistrationScreenState
               ),
               const SizedBox(height: 20),
 
-              _buildSectionTitle("Target Ages"),
-              _buildAgeRangeSelection(),
+              _buildSectionTitle("Age Range"),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildInput(
+                      _minAgeController,
+                      'Min Age',
+                      Icons.exposure_minus_1,
+                      inputType: TextInputType.number,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _buildInput(
+                      _maxAgeController,
+                      'Max Age',
+                      Icons.exposure_plus_1,
+                      inputType: TextInputType.number,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              _buildSectionTitle("Gender"),
+              _buildDropdown<String>(
+                label: 'Target Gender',
+                icon: Icons.wc,
+                value: _selectedGender,
+                items: _genders,
+                onChanged: (val) => setState(() => _selectedGender = val),
+              ),
               const SizedBox(height: 20),
 
               _buildSectionTitle("Status"),
@@ -171,22 +202,138 @@ class _ActivityRegistrationScreenState
       ),
     );
   }
+// save
+Future<void> _saveActivity(BuildContext context) async {
+  if (_titleController.text.isEmpty ||
+      _descriptionController.text.isEmpty ||
+      _startDateController.text.isEmpty ||
+      _endDateController.text.isEmpty ||
+      _selectedDuration == null ||
+      _selectedActivityStatus == null ||
+      _selectedActivityType == null ||
+      _selectedGender == null ||
+      _minAgeController.text.isEmpty ||
+      _maxAgeController.text.isEmpty ||
+      _capacityController.text.isEmpty ||
+      _priceController.text.isEmpty) {
+    _showMessage(context, 'Error', 'Please fill all required fields', false);
+    return;
+  }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontFamily: 'RobotoMono',
-        fontWeight: FontWeight.w600,
-        fontSize: 16,
-        color: AppColors.textDark,
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final providerId = prefs.getString("provider_id");
+
+    if (providerId == null || providerId.isEmpty) {
+      _showMessage(context, 'Error', 'Provider not logged in!', false);
+      return;
+    }
+
+    final activityData = {
+      "provider_id": providerId,
+      "title": _titleController.text.trim(),
+      "description": _descriptionController.text.trim(),
+
+      // ✅ تصحيح الذكاء الصناعي
+      "gender": _selectedGender!.toLowerCase(),
+      "type": _selectedActivityType!.toLowerCase(),
+
+      "age_from": int.parse(_minAgeController.text.trim()),
+      "age_to": int.parse(_maxAgeController.text.trim()),
+      "price": double.parse(_priceController.text.trim()),
+      "capacity": int.parse(_capacityController.text.trim()),
+      "duration": _selectedDuration,
+
+      "status": _selectedActivityStatus == "Active",
+      "start_date": _startDateController.text.trim(),
+      "end_date": _endDateController.text.trim(),
+    };
+
+    // ✅ سير احترافي: إنشاء → جلب كامل → انتقال
+    final created =
+        await ApiService.createActivity(activityData);
+
+    final activityId = created["activity_id"];
+
+    final fullActivity =
+        await ApiService.getActivityById(activityId);
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            ActivityWelcomeScreen(activity: fullActivity),
       ),
+    );
+
+    _clearForm();
+  } catch (e) {
+    _showMessage(context, 'Error', 'Failed to save activity: $e', false);
+  }
+}
+
+
+  void _showMessage(
+      BuildContext context, String title, String message, bool success) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          icon: Icon(
+            success ? Icons.check_circle : Icons.error,
+            color: success ? Colors.green : Colors.red,
+            size: 48,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("OK"),
+            )
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildInput(TextEditingController controller, String label,
-      IconData icon,
-      {TextInputType inputType = TextInputType.text}) {
+  void _clearForm() {
+    _titleController.clear();
+    _descriptionController.clear();
+    _startDateController.clear();
+    _endDateController.clear();
+    _capacityController.clear();
+    _priceController.clear();
+    _minAgeController.clear();
+    _maxAgeController.clear();
+    _selectedDuration = null;
+    _selectedActivityStatus = null;
+    _selectedActivityType = null;
+    _selectedGender = null;
+    setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _startDateController.dispose();
+    _endDateController.dispose();
+    _capacityController.dispose();
+    _priceController.dispose();
+    _minAgeController.dispose();
+    _maxAgeController.dispose();
+    super.dispose();
+  }
+
+  Widget _buildSectionTitle(String title) => Text(title);
+
+  Widget _buildInput(
+    TextEditingController controller,
+    String label,
+    IconData icon, {
+    TextInputType inputType = TextInputType.text,
+  }) {
     return TextFormField(
       controller: controller,
       keyboardType: inputType,
@@ -201,14 +348,16 @@ class _ActivityRegistrationScreenState
   }
 
   Widget _buildTextArea(
-      TextEditingController controller, String label, IconData icon) {
+    TextEditingController controller,
+    String label,
+    IconData icon,
+  ) {
     return TextFormField(
       controller: controller,
       maxLines: 3,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: AppColors.primary),
-        alignLabelWithHint: true,
       ),
     );
   }
@@ -232,7 +381,8 @@ class _ActivityRegistrationScreenState
             (item) => DropdownMenuItem<T>(
               value: item,
               child: Text(
-                  itemBuilder != null ? itemBuilder(item) : item.toString()),
+                itemBuilder != null ? itemBuilder(item) : item.toString(),
+              ),
             ),
           )
           .toList(),
@@ -257,64 +407,6 @@ class _ActivityRegistrationScreenState
     );
   }
 
-  Widget _buildAgeRangeSelection() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.15),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Age Range *',
-            style: TextStyle(
-              fontFamily: 'RobotoMono',
-              fontWeight: FontWeight.w500,
-              color: AppColors.textDark,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _ageRanges.map((age) {
-              final isSelected = _selectedAgeRanges.contains(age);
-              return FilterChip(
-                label: Text(age),
-                selected: isSelected,
-                onSelected: (selected) {
-                  setState(() {
-                    if (selected) {
-                      _selectedAgeRanges.add(age);
-                    } else {
-                      _selectedAgeRanges.remove(age);
-                    }
-                  });
-                },
-                selectedColor: AppColors.primary,
-                backgroundColor: Colors.grey[200],
-                checkmarkColor: Colors.white,
-                labelStyle: TextStyle(
-                  color: isSelected ? Colors.white : AppColors.textDark,
-                  fontFamily: 'RobotoMono',
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _selectDate(BuildContext context, bool isStart) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -322,9 +414,11 @@ class _ActivityRegistrationScreenState
       firstDate: DateTime.now(),
       lastDate: DateTime(2100),
     );
+
     if (picked != null) {
       final formatted =
-          "${picked.year}-${picked.month}-${picked.day}";
+          "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
+
       setState(() {
         if (isStart) {
           _startDateController.text = formatted;
@@ -333,123 +427,5 @@ class _ActivityRegistrationScreenState
         }
       });
     }
-  }
-
-  Future<void> _saveActivity(BuildContext context) async {
-    if (_titleController.text.isEmpty ||
-        _selectedDuration == null ||
-        _selectedAgeRanges.isEmpty ||
-        _selectedActivityStatus == null ||
-        _selectedActivityType == null) {
-      _showMessage(context, 'Error', 'Please fill all required fields', false);
-      return;
-    }
-
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        _showMessage(context, 'Error', 'Provider not logged in!', false);
-        return;
-      }
-
-      final firestore = FirebaseFirestore.instance;
-
-      final activityDoc = firestore
-          .collection('providers')
-          .doc(user.uid)
-          .collection('activities')
-          .doc();
-
-      Map<String, dynamic> activityData = {
-        'activity_id': activityDoc.id,
-        'title': _titleController.text.trim(),
-        'description': _descriptionController.text.trim(),
-        'start_date': _startDateController.text.trim(),
-        'end_date': _endDateController.text.trim(),
-        'duration_hours': _selectedDuration,
-        'capacity': int.tryParse(_capacityController.text.trim()) ?? 0,
-        'price_sar': double.tryParse(_priceController.text.trim()) ?? 0.0,
-        'age_ranges': _selectedAgeRanges,
-        'activity_status': _selectedActivityStatus,
-        'activity_type': _selectedActivityType,
-        'created_at': DateTime.now(),
-        'provider_id': user.uid,
-      };
-
-      await activityDoc.set(activityData);
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ActivityWelcomeScreen(activity: activityData),
-        ),
-      );
-
-      _clearForm();
-    } catch (e) {
-      _showMessage(context, 'Error', 'Failed to save activity: $e', false);
-    }
-  }
-
-  void _showMessage(
-      BuildContext context, String title, String message, bool success) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(
-            title,
-            style: const TextStyle(
-                fontFamily: 'RobotoMono', fontWeight: FontWeight.w600),
-          ),
-          content: Text(
-            message,
-            style: const TextStyle(fontFamily: 'RobotoMono'),
-          ),
-          icon: Icon(
-            success ? Icons.check_circle : Icons.error,
-            color: success ? Colors.green : Colors.red,
-            size: 48,
-          ),
-          actions: [
-            TextButton(
-              child: Text(
-                success ? 'OK' : 'TRY AGAIN',
-                style: TextStyle(
-                  color: success ? AppColors.primary : Colors.red,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              onPressed: () => Navigator.of(context).pop(),
-            )
-          ],
-        );
-      },
-    );
-  }
-
-  void _clearForm() {
-    _titleController.clear();
-    _descriptionController.clear();
-    _startDateController.clear();
-    _endDateController.clear();
-    _capacityController.clear();
-    _priceController.clear();
-    _selectedDuration = null;
-    _selectedAgeRanges.clear();
-    _selectedActivityStatus = null;
-    _selectedActivityType = null;
-    setState(() {});
-  }
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
-    _startDateController.dispose();
-    _endDateController.dispose();
-    _capacityController.dispose();
-    _priceController.dispose();
-    super.dispose();
   }
 }

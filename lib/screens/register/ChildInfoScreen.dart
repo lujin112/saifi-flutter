@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../service/theme.dart';
+import '../service/api_service.dart';
 import 'location_selection_screen.dart';
 
 class ChildInfoScreen extends StatefulWidget {
@@ -29,15 +28,14 @@ class _ChildInfoScreenState extends State<ChildInfoScreen> {
     'Self-Defense': Icons.sports_mma,
   };
 
-  int calculateAge(DateTime birthDate) {
-    DateTime today = DateTime.now();
+  int _calculateAge(DateTime birthDate) {
+    final today = DateTime.now();
     int age = today.year - birthDate.year;
-
     if (today.month < birthDate.month ||
-        (today.month == birthDate.month && today.day < birthDate.day)) {
+        (today.month == birthDate.month &&
+            today.day < birthDate.day)) {
       age--;
     }
-
     return age;
   }
 
@@ -64,13 +62,9 @@ class _ChildInfoScreenState extends State<ChildInfoScreen> {
                   },
                 ),
               ),
-
               ShinyButton(
                 text: _isSaving ? "Saving..." : "Save & Continue",
-                onPressed: () {
-                  if (_isSaving) return;
-                  _saveChildren();
-                },
+                onPressed: _isSaving ? null : _saveChildren,
               ),
             ],
           ),
@@ -80,6 +74,10 @@ class _ChildInfoScreenState extends State<ChildInfoScreen> {
   }
 
   Widget _buildChildCard(Map<String, dynamic> child, int index) {
+    final birthdayText = _birthdays[index] == null
+        ? ""
+        : "${_birthdays[index]!.year}-${_birthdays[index]!.month.toString().padLeft(2, '0')}-${_birthdays[index]!.day.toString().padLeft(2, '0')}";
+
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -90,8 +88,7 @@ class _ChildInfoScreenState extends State<ChildInfoScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "${child['firstName']} ${child['lastName']} (${child['gender']})"
-              "${_birthdays[index] != null ? " - Age: ${calculateAge(_birthdays[index]!)}" : ""}",
+              "${child['firstName']} ${child['lastName']} (${child['gender']})",
               style: const TextStyle(
                 fontFamily: 'RobotoMono',
                 fontSize: 16,
@@ -111,21 +108,21 @@ class _ChildInfoScreenState extends State<ChildInfoScreen> {
                 final picked = await showDatePicker(
                   context: context,
                   initialDate: DateTime(2010),
-                  firstDate: DateTime(2007),
+                  firstDate: DateTime(2005),
                   lastDate: DateTime.now(),
                 );
-                if (picked != null) setState(() => _birthdays[index] = picked);
+
+                if (picked != null && mounted) {
+                  setState(() => _birthdays[index] = picked);
+                }
               },
               controller: TextEditingController(
-                text: _birthdays[index] == null
-                    ? ""
-                    : "${_birthdays[index]!.day}/${_birthdays[index]!.month}/${_birthdays[index]!.year}",
+                text: birthdayText,
               ),
             ),
 
             const SizedBox(height: 15),
 
-            // Interests
             const Text(
               "Interests:",
               style: TextStyle(
@@ -141,8 +138,8 @@ class _ChildInfoScreenState extends State<ChildInfoScreen> {
               children: _interestTypes.entries.map((entry) {
                 final interest = entry.key;
                 final icon = entry.value;
-
-                final selected = _selectedInterests[index]!.contains(interest);
+                final selected =
+                    _selectedInterests[index]!.contains(interest);
 
                 return FilterChip(
                   label: Row(
@@ -155,6 +152,7 @@ class _ChildInfoScreenState extends State<ChildInfoScreen> {
                   ),
                   selected: selected,
                   onSelected: (s) {
+                    if (!mounted) return;
                     setState(() {
                       s
                           ? _selectedInterests[index]!.add(interest)
@@ -178,41 +176,59 @@ class _ChildInfoScreenState extends State<ChildInfoScreen> {
     );
   }
 
+  // ================== SAVE TO DATABASE ==================
   Future<void> _saveChildren() async {
     setState(() => _isSaving = true);
 
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-    final parent = FirebaseFirestore.instance.collection("parents").doc(uid);
-    final batch = FirebaseFirestore.instance.batch();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+     final parentId = prefs.getString("parent_id")?.toString();
 
-    for (int i = 0; i < widget.children.length; i++) {
-      final c = widget.children[i];
-      final ref = parent.collection("children").doc();
-
-      // حساب العمر
-      final age = _birthdays[i] != null ? calculateAge(_birthdays[i]!) : null;
-
-      batch.set(ref, {
-        "first_name": c['firstName'],
-        "last_name": c['lastName'],
-        "gender": c['gender'],
-        "birthday": _birthdays[i] != null
-            ? Timestamp.fromDate(_birthdays[i]!)
-            : null,
-        "age": age,
-        "interests": _selectedInterests[i]!.toList(),
-        "notes": _notes[i] ?? "",
-        "created_at": FieldValue.serverTimestamp(),
-      });
+      if (parentId == null || parentId.isEmpty || !parentId.contains('-')) {
+      throw Exception("Invalid parent_id format: $parentId");
     }
 
-    await batch.commit();
 
-    setState(() => _isSaving = false);
+      for (int i = 0; i < widget.children.length; i++) {
+        final c = widget.children[i];
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const LocationSelectionScreen()),
-    );
+        if (_birthdays[i] == null) {
+          throw Exception("All children must have a birthday");
+        }
+
+        final birthdayStr =
+            "${_birthdays[i]!.year}-${_birthdays[i]!.month.toString().padLeft(2, '0')}-${_birthdays[i]!.day.toString().padLeft(2, '0')}";
+        print("SENDING parent_id => $parentId | TYPE => ${parentId.runtimeType}");
+
+        await ApiService.createChild(
+  parentId: parentId.toString().replaceAll('"', '').trim(),
+  firstName: c['firstName'],
+  lastName: c['lastName'],
+  gender: c['gender'].toString().toLowerCase(),
+  birthday: birthdayStr,
+  age: _calculateAge(_birthdays[i]!),
+  notes: _notes[i] ?? "",
+);
+
+      }
+
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const LocationSelectionScreen(),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() => _isSaving = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to save children: $e")),
+      );
+    }
   }
 }

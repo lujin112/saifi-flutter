@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../service/theme.dart';
+import '../service/api_service.dart';
 
 class AddChildScreen extends StatefulWidget {
   const AddChildScreen({super.key});
 
   @override
-  State<AddChildScreen> createState() =>
-      _AddChildScreenState();
+  State<AddChildScreen> createState() => _AddChildScreenState();
 }
 
 class _AddChildScreenState extends State<AddChildScreen> {
@@ -24,12 +23,19 @@ class _AddChildScreenState extends State<AddChildScreen> {
 
   bool _isSaving = false;
 
+  @override
+  void dispose() {
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+
   int _calculateAge(DateTime birthDate) {
     final today = DateTime.now();
     int age = today.year - birthDate.year;
     if (today.month < birthDate.month ||
-        (today.month == birthDate.month &&
-            today.day < birthDate.day)) {
+        (today.month == birthDate.month && today.day < birthDate.day)) {
       age--;
     }
     return age;
@@ -40,11 +46,10 @@ class _AddChildScreenState extends State<AddChildScreen> {
       context: context,
       firstDate: DateTime(2008),
       lastDate: DateTime.now(),
-      initialDate:
-          DateTime.now().subtract(const Duration(days: 365 * 6)),
+      initialDate: DateTime.now().subtract(const Duration(days: 365 * 6)),
     );
 
-    if (picked != null) {
+    if (picked != null && mounted) {
       setState(() {
         _birthDate = picked;
         _age = _calculateAge(picked);
@@ -52,36 +57,53 @@ class _AddChildScreenState extends State<AddChildScreen> {
     }
   }
 
+  // ✅ SAVE TO POSTGRESQL VIA API (FIXED ✅)
   Future<void> _saveChild() async {
     if (!_formKey.currentState!.validate() || _birthDate == null) return;
+    if (_isSaving) return;
 
-    setState(() => _isSaving = true);
+    if (mounted) {
+      setState(() => _isSaving = true);
+    }
 
     try {
-      final uid = FirebaseAuth.instance.currentUser!.uid;
+      final prefs = await SharedPreferences.getInstance();
+      final parentId = prefs.getString("parent_id");
 
-      await FirebaseFirestore.instance.collection("children").add({
-        "parent_id": uid,
-        "first_name": _firstNameController.text.trim(),
-        "last_name": _lastNameController.text.trim(),
-        "gender": _gender,
-        "birthday": Timestamp.fromDate(_birthDate!),
-        "age": _age,
-        "notes": _notesController.text.trim(),
-        "created_at": FieldValue.serverTimestamp(),
-      });
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Child added successfully")),
-        );
-        Navigator.pop(context);
+      if (parentId == null || parentId.isEmpty) {
+        throw Exception("Parent not logged in");
       }
+
+      final birthdayStr =
+          _birthDate!.toIso8601String().substring(0, 10);
+
+      await ApiService.createChild(
+        parentId: parentId,
+        firstName: _firstNameController.text.trim(),
+        lastName: _lastNameController.text.trim(),
+        gender: _gender,          // ✅ بدون lowercase
+        birthday: birthdayStr,    // ✅ الاسم الصحيح
+        age: _age,
+        notes: _notesController.text.trim().isEmpty
+            ? null
+            : _notesController.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Child added successfully")),
+      );
+
+      Navigator.pop(context);
     } catch (e) {
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error: $e")),
       );
     } finally {
+      if (!mounted) return;
       setState(() => _isSaving = false);
     }
   }
@@ -158,12 +180,10 @@ class _AddChildScreenState extends State<AddChildScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
-                        border:
-                            Border.all(color: AppColors.grey),
+                        border: Border.all(color: AppColors.grey),
                       ),
                       child: Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
                             _birthDate == null

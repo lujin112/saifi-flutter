@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../service/theme.dart';
-import 'booking/select_child_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../booking/select_child_screen.dart';
+import '../service/api_service.dart';
 
 class ActivityDetailsPage extends StatelessWidget {
   final Map<String, dynamic> data;
@@ -14,95 +14,56 @@ class ActivityDetailsPage extends StatelessWidget {
     required this.activityId,
   });
 
-  // ---------------------------------------------------
+  // -----------------------------
   String _formatDate(dynamic value) {
-    if (value is Timestamp) {
-      final d = value.toDate();
-      return "${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
-    }
     if (value is String) return value;
     return "-";
   }
 
-  String _formatAgeRange(dynamic value) {
-    if (value is List) return value.join(", ");
-    if (value is String) return value;
-    return "All ages";
+
+  // -----------------------------
+  Future<String> _getParentId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString("parent_id")!;
   }
 
-  // ---------------------------------------------------
+  // -----------------------------
   Future<List<Map<String, dynamic>>> _getChildren() async {
-  final uid = FirebaseAuth.instance.currentUser!.uid;
+    final parentId = await _getParentId();
+    final children = await ApiService.getChildrenByParent(parentId);
+    return children;
+  }
 
-  final snap = await FirebaseFirestore.instance
-      .collection("parents")
-      .doc(uid)
-      .collection("children")
-      .get();
+  // -----------------------------
+  Future<String> _getProviderName(String providerId) async {
+    if (providerId.isEmpty) return "Provider";
+    final provider = await ApiService.getProviderById(providerId);
+    return provider["name"] ?? "Provider";
+  }
 
-  return snap.docs.map((d) {
-    return {
-      ...d.data(),
-      "id": d.id, // مهم للتخزين في bookings
-    };
-  }).toList();
-}
-
-
-  // ---------------------------------------------------
+  // -----------------------------
   @override
   Widget build(BuildContext context) {
     final String title = data['title'] ?? 'Activity';
     final String type = data['type'] ?? 'Activity';
-    final String description = data['description'] ?? 'No description provided.';
-    final rawAge = data["age_range"];
-//age range
-String ageRange = "All ages";
-
-// لو قائمة مثل [5,12] أو ["5","12"]
-if (rawAge is List && rawAge.isNotEmpty) {
-  ageRange = rawAge.join(" - ");
-}
-
-// لو سترينق "5-12"
-else if (rawAge is String && rawAge.contains("-")) {
-  ageRange = rawAge;
-}
+    final String description =
+        data['description'] ?? 'No description provided.';
 
     final String startDate = _formatDate(data['start_date']);
     final String endDate = _formatDate(data['end_date']);
-    final String status = (data['activity_status'] ?? 'active').toString();
-    final String providerId = data['provider_id'] ?? "";
+
+    final String status = (data['status'] ?? true) ? "active" : "inactive";
+    final String providerId = data['provider_id']?.toString() ?? "";
 
     final int? capacity = data['capacity'];
     final int? duration = data['duration'];
     final num? price = data['price'];
 
-    // ---------------------------
-    // Extract min/max age
-    // ---------------------------
-    
+    final int minAge = data["age_from"] ?? 0;
+    final int maxAge = data["age_to"] ?? 99;
 
-int minAge = 0;
-int maxAge = 99;
+    final String ageRange = "$minAge - $maxAge";
 
-final raw = data["age_range"];
-
-// example: "9-12"
-if (raw is String && raw.contains("-")) {
-  final parts = raw.split("-");
-  if (parts.length >= 2) {
-    minAge = int.tryParse(parts[0].trim()) ?? 0;
-    maxAge = int.tryParse(parts[1].trim()) ?? 99;
-  }
-}
-
-
-
-
-
-
-    // Activity gender (if any)
     final String activityGender = data["gender"] ?? "both";
 
     return Scaffold(
@@ -125,44 +86,30 @@ if (raw is String && raw.contains("-")) {
       ),
 
       // ---------------------------------------------------
-      // PAGE BODY
-      // ---------------------------------------------------
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             // HERO CARD
-            providerId.isNotEmpty
-                ? FutureBuilder<DocumentSnapshot>(
-                    future: FirebaseFirestore.instance
-                        .collection("providers")
-                        .doc(providerId)
-                        .get(),
-                    builder: (context, snap) {
-                      final providerData = snap.data?.data() as Map<String, dynamic>?;
-
-final providerName = providerData?["provider_name"] 
-    ?? providerData?["name"] 
-    ?? "Provider";
-
-
-                      return _buildHeroCard(title, type, status, providerName);
-                    },
-                  )
-                : _buildHeroCard(title, type, status, "Provider"),
+            FutureBuilder<String>(
+              future: _getProviderName(providerId),
+              builder: (context, snap) {
+                final providerName = snap.data ?? "Provider";
+                return _buildHeroCard(title, type, status, providerName);
+              },
+            ),
 
             const SizedBox(height: 20),
 
-            // QUICK TAGS
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
                 _smallTag("Age: $ageRange", Icons.group),
                 if (capacity != null)
-                  _smallTag("Capacity: $capacity", Icons.people_alt_rounded),
+                  _smallTag("Capacity: $capacity",
+                      Icons.people_alt_rounded),
                 if (duration != null)
                   _smallTag("Duration: $duration Hours", Icons.schedule),
               ],
@@ -170,16 +117,19 @@ final providerName = providerData?["provider_name"]
 
             const SizedBox(height: 20),
 
-            // INFO CARDS
             Row(
               children: [
                 Expanded(
-                    child: _infoCard(
-                        "Start date", startDate, Icons.calendar_today_rounded)),
+                  child: _infoCard(
+                    "Start date",
+                    startDate,
+                    Icons.calendar_today_rounded,
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
-                    child:
-                        _infoCard("End date", endDate, Icons.event_rounded)),
+                  child: _infoCard("End date", endDate, Icons.event_rounded),
+                ),
               ],
             ),
 
@@ -188,12 +138,17 @@ final providerName = providerData?["provider_name"]
             Row(
               children: [
                 Expanded(
-                    child: _infoCard("Price",
-                        price != null ? "$price SAR" : "-", Icons.payments)),
+                  child: _infoCard(
+                    "Price",
+                    price != null ? "$price SAR" : "-",
+                    Icons.payments,
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
-                    child: _infoCard(
-                        "Status", status, Icons.toggle_on_rounded)),
+                  child: _infoCard("Status", status,
+                      Icons.toggle_on_rounded),
+                ),
               ],
             ),
 
@@ -213,7 +168,6 @@ final providerName = providerData?["provider_name"]
 
             const SizedBox(height: 30),
 
-            // BOOK NOW
             _buildBookButton(context, minAge, maxAge, activityGender),
           ],
         ),
@@ -228,15 +182,12 @@ final providerName = providerData?["provider_name"]
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
-          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
         ),
-
-        // ---------------------------
-        // GO TO SELECT CHILD PAGE
-        // ---------------------------
         onPressed: () async {
           final kids = await _getChildren();
 
@@ -246,26 +197,20 @@ final providerName = providerData?["provider_name"]
               builder: (_) => SelectChildScreen(
                 children: kids,
                 activityData: {
-  "activity_id": activityId ?? "",
-  "title": data["title"] ?? "",
-  "price": data["price"] ?? 0,
-  "providerName": data["provider_name"] ?? "",
-  "providerId": data["provider_id"] ?? "",
-  "min_age": minAge,
-  "max_age": maxAge,
-  "gender": data["gender"] ?? "both",
-  "start_date": data["start_date"]?.toString() ?? "",
-  "end_date": data["end_date"]?.toString() ?? "",
-  "age_range": data["age_range"] ?? "0-99",
-}
-
-
-
+                  "activity_id": activityId,
+                  "title": data["title"],
+                  "price": data["price"] ?? 0,
+                  "provider_id": data["provider_id"], // ✅ تصحيح هنا
+                  "min_age": minAge,
+                  "max_age": maxAge,
+                  "gender": data["gender"] ?? "both",
+                  "start_date": data["start_date"]?.toString() ?? "",
+                  "end_date": data["end_date"]?.toString() ?? "",
+                },
               ),
             ),
           );
         },
-
         child: const Text(
           "Book Now",
           style: TextStyle(
@@ -279,8 +224,6 @@ final providerName = providerData?["provider_name"]
     );
   }
 
-  // ---------------------------------------------------
-  // Helper UI widgets
   // ---------------------------------------------------
   Widget _buildHeroCard(
       String title, String type, String status, String providerName) {
@@ -306,17 +249,16 @@ final providerName = providerData?["provider_name"]
           const SizedBox(width: 16),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textDark)),
-                Text(providerName,
-                    style: const TextStyle(color: Colors.grey)),
-              ],
-            ),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textDark)),
+                  Text(providerName,
+                      style: const TextStyle(color: Colors.grey)),
+                ]),
           ),
         ],
       ),
@@ -325,11 +267,13 @@ final providerName = providerData?["provider_name"]
 
   Widget _smallTag(String text, IconData icon) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding:
+          const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.primary.withOpacity(0.18)),
+        border:
+            Border.all(color: AppColors.primary.withOpacity(0.18)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -355,14 +299,15 @@ final providerName = providerData?["provider_name"]
           const SizedBox(width: 10),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(color: Colors.grey)),
-                Text(value,
-                    style: const TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.bold)),
-              ],
-            ),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: const TextStyle(color: Colors.grey)),
+                  Text(value,
+                      style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold)),
+                ]),
           ),
         ],
       ),

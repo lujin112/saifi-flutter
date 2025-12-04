@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../service/theme.dart';
-import 'role_selection_screen.dart';
+import 'service/theme.dart';
+import 'register/role_selection_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});

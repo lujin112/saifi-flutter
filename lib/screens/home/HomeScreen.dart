@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../register/role_selection_screen.dart';
 import 'chatbot_screen.dart';
 import '../service/theme.dart';
 import 'profile_page.dart';
-import 'booking/booking_screen.dart';
-import 'add_child.dart'; // ✅ صفحة إضافة طفل الجديدة
+import '../booking/booking_screen.dart';
+import 'add_child.dart';
 
 class HomeScreen extends StatefulWidget {
   final String userName;
@@ -34,17 +34,18 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
   }
 
-  // ✅ تسجيل خروج فعلي من Firebase
-  Future<void> _logout() async {
-    await FirebaseAuth.instance.signOut();
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
-      (_) => false,
-    );
-  }
+ Future<void> _logout() async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.clear(); // يمسح parent_id و parent_name وأي جلسة
 
-  // ✅ فتح صفحة add_child.dart
+  Navigator.pushAndRemoveUntil(
+    context,
+    MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
+    (route) => false, // يمسح كل الستاك
+  );
+}
+
+
   void _openAddChildForm() {
     Navigator.push(
       context,
@@ -75,7 +76,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             centerTitle: true,
-            leading: null,
             actions: [
               IconButton(
                 icon: const Icon(
@@ -83,14 +83,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: AppColors.textDark,
                   size: 26,
                 ),
-                onPressed: _logout,
+                onPressed: _logout, // ✅ الآن يعمل فعليًا
               ),
             ],
           ),
 
           body: _pages[_currentIndex],
 
-          // ✅ Bottom Navigation Bar
           bottomNavigationBar: Container(
             height: 70,
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -107,19 +106,15 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Home
-                Row(children: [
-                  _navItem(
-                    label: "Home",
-                    icon: Icons.home,
-                    isSelected: _currentIndex == 0,
-                    onTap: () {
-                      setState(() => _currentIndex = 0);
-                    },
-                  ),
-                ]),
+                _navItem(
+                  label: "Home",
+                  icon: Icons.home,
+                  isSelected: _currentIndex == 0,
+                  onTap: () {
+                    setState(() => _currentIndex = 0);
+                  },
+                ),
 
-                // ✅ زر + يفتح add_child.dart
                 GestureDetector(
                   onTap: _openAddChildForm,
                   child: Container(
@@ -144,17 +139,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
 
-                // Profile
-                Row(children: [
-                  _navItem(
-                    label: "Profile",
-                    icon: Icons.person,
-                    isSelected: _currentIndex == 2,
-                    onTap: () {
-                      setState(() => _currentIndex = 2);
-                    },
-                  ),
-                ]),
+                _navItem(
+                  label: "Profile",
+                  icon: Icons.person,
+                  isSelected: _currentIndex == 2,
+                  onTap: () {
+                    setState(() => _currentIndex = 2);
+                  },
+                ),
               ],
             ),
           ),
@@ -308,7 +300,6 @@ class HomePage extends StatelessWidget {
             );
           },
         ),
-        _homeButton(icon: Icons.location_on, title: "Track Ride", onTap: () {}),
         _homeButton(
           icon: Icons.event_note,
           title: "My Bookings",
