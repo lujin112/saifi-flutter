@@ -190,7 +190,7 @@ class ShinyButton extends StatelessWidget {
   const ShinyButton({
     super.key,
     required this.text,
-    required this.onPressed,
+    required this.onPressed, SizedBox? child,
   });
 
   @override

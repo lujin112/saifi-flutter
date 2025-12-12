@@ -200,15 +200,20 @@ class _ChildInfoScreenState extends State<ChildInfoScreen> {
             "${_birthdays[i]!.year}-${_birthdays[i]!.month.toString().padLeft(2, '0')}-${_birthdays[i]!.day.toString().padLeft(2, '0')}";
         print("SENDING parent_id => $parentId | TYPE => ${parentId.runtimeType}");
 
-        await ApiService.createChild(
+await ApiService.createChild(
   parentId: parentId.toString().replaceAll('"', '').trim(),
   firstName: c['firstName'],
   lastName: c['lastName'],
   gender: c['gender'].toString().toLowerCase(),
   birthday: birthdayStr,
   age: _calculateAge(_birthdays[i]!),
+  interests: (c['interests'] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList() 
+      ?? [], // لو ما فيه انترست، يرسل ليست فاضية
   notes: _notes[i] ?? "",
 );
+
 
       }
 

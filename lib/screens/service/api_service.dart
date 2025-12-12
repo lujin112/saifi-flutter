@@ -132,6 +132,43 @@ static Future<Map<String, dynamic>> registerProvider(
     throw Exception("Failed to register provider: ${response.body}");
   }
 }
+// =========================
+// ✅ Create Child (with interests)
+// =========================
+static Future<Map<String, dynamic>> createChild({
+  required String parentId,
+  required String firstName,
+  required String lastName,
+  required String gender,
+  required String birthday,
+  required int age,
+  String? notes,
+  required List<String> interests, // ✅ اسم الباراميتر متطابق مع النداء
+}) async {
+  final url = Uri.parse("$baseUrl/children/create");
+
+  final response = await http.post(
+    url,
+    headers: {"Content-Type": "application/json"},
+    body: jsonEncode({
+      "parent_id": parentId,
+      "first_name": firstName,
+      "last_name": lastName,
+      "gender": gender,
+      "birthdate": birthday,
+      "age": age,
+      "notes": notes,
+      "interests": interests, // ✅ اللي يروح للباك اند
+    }),
+  );
+
+  if (response.statusCode != 200 && response.statusCode != 201) {
+    throw Exception("Create child failed: ${response.body}");
+  }
+
+  return jsonDecode(response.body);
+}
+
 
 
   // =========================
@@ -158,6 +195,32 @@ static Future<Map<String, dynamic>> createActivity(
   return jsonDecode(response.body); // ✅ يرجع activity_id فقط
 }
 
+// =========================
+// ✅ Get Activity By ID
+// =========================
+static Future<Map<String, dynamic>> getActivityById(String activityId) async {
+  final url = Uri.parse("$baseUrl/activities/$activityId");
+
+  final response = await http.get(url);
+
+  if (response.statusCode != 200) {
+    throw Exception("Failed to load activity: ${response.body}");
+  }
+
+  final decoded = jsonDecode(response.body);
+
+  // ✅ لو راجع داخل data
+  if (decoded is Map && decoded["data"] != null) {
+    return Map<String, dynamic>.from(decoded["data"]);
+  }
+
+  // ✅ لو راجع مباشر
+  if (decoded is Map) {
+    return Map<String, dynamic>.from(decoded);
+  }
+
+  throw Exception("Invalid getActivityById response format");
+}
 
   // =========================
   // ✅ Get All Activities
@@ -176,38 +239,127 @@ static Future<Map<String, dynamic>> createActivity(
     return data.cast<Map<String, dynamic>>();
   }
 
-  // =========================
-  // ✅ Create Booking
-  // =========================
-  static Future<Map<String, dynamic>> createBooking({
-    required String parentId,
-    required String childId,
-    required String activityId,
-    required String providerId,
-    required String status,
-    required String bookingDate,
-  }) async {
-    final url = Uri.parse("$baseUrl/bookings/create");
+  //deleteActivity 
+static Future<void> deleteActivity(String activityId) async {
+  final res = await http.delete(
+    Uri.parse("$baseUrl/activities/$activityId"),
+    headers: {"Content-Type": "application/json"},
+  );
 
-    final response = await http.post(
-      url,
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "parent_id": parentId,
-        "child_id": childId,
-        "activity_id": activityId,
-        "provider_id": providerId,
-        "status": status,
-        "booking_date": bookingDate,
-      }),
-    );
+  print("🟥 DELETE STATUS: ${res.statusCode}");
+  print("🟥 DELETE BODY: ${res.body}");
 
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw Exception("Create booking failed: ${response.body}");
-    }
-
-    return jsonDecode(response.body);
+  if (res.statusCode != 200 && res.statusCode != 204) {
+    throw Exception("Delete failed: ${res.body}");
   }
+}
+
+
+  //getInitialRecommendations
+static Future<List<Map<String, dynamic>>> getInitialRecommendations(
+  String childId,
+) async {
+
+  final url = "$baseUrl/children/$childId/initial-recommendations";
+  print("🔗 Calling: $url");
+
+  final response = await http.get(
+    Uri.parse(url),
+  );
+
+  print("🔵 Status Code: ${response.statusCode}");
+  print("🔵 Response Body: ${response.body}");
+
+  if (response.statusCode == 200) {
+    final data = json.decode(response.body);
+    return List<Map<String, dynamic>>.from(data["recommendations"]);
+  } else {
+    throw Exception(
+      "Failed to load recommendations: ${response.statusCode} | ${response.body}"
+    );
+  }
+}
+
+
+    // =========================
+  // ✅ update Activity
+  // =========================
+static Future<void> updateActivity({
+  required String activityId,
+  required Map<String, dynamic> data,
+}) async {
+  final url = Uri.parse("$baseUrl/activities/$activityId");
+
+  final response = await http.put(
+    url,
+    headers: {"Content-Type": "application/json"},
+    body: jsonEncode(data),
+  );
+
+  print("🟡 UPDATE ACTIVITY STATUS: ${response.statusCode}");
+  print("🟡 UPDATE ACTIVITY BODY: ${response.body}");
+
+  if (response.statusCode != 200) {
+    throw Exception("Failed to update activity");
+  }
+}
+// =========================
+// ✅ Delete Booking (PARENT)
+// =========================
+static Future<void> deleteBooking(String bookingId) async {
+  final url = Uri.parse("$baseUrl/bookings/$bookingId");
+
+  final response = await http.delete(url);
+
+  if (response.statusCode != 200 && response.statusCode != 204) {
+    throw Exception("Failed to delete booking: ${response.body}");
+  }
+}
+
+// =========================
+// ✅ Create Booking (NEW API) - FIXED ✅
+// =========================
+static Future<Map<String, dynamic>> createBooking({
+  required String parentId,
+  required String childId,
+  required String activityId,
+  required String providerId,
+  required String status,
+  required String bookingDate,
+  String? startDate,
+  String? endDate,
+  String? notes,
+}) async {
+  final url = Uri.parse("$baseUrl/bookings"); // ✅ يطابق POST /bookings في الباك
+
+  final response = await http.post(
+    url,
+    headers: {"Content-Type": "application/json"},
+    body: jsonEncode({
+      "parent_id": parentId,
+      "child_id": childId,
+      "activity_id": activityId,
+      "provider_id": providerId,
+      "status": status,
+      "booking_date": bookingDate,
+      "start_date": startDate,
+      "end_date": endDate,
+      "notes": notes,
+    }),
+  );
+
+  print("🟠 CREATE BOOKING STATUS: ${response.statusCode}");
+  print("🟠 CREATE BOOKING BODY: ${response.body}");
+
+  if (response.statusCode != 200 && response.statusCode != 201) {
+    throw Exception("Create booking failed: ${response.body}");
+  }
+
+  return jsonDecode(response.body);
+}
+
+
+
 
   // =========================
   // ✅ Get Parent Bookings
@@ -231,60 +383,42 @@ static Future<Map<String, dynamic>> createActivity(
     }
   }
 
-// =========================
-// ✅ Create Child (TRULY FIXED ✅)
-// =========================
-static Future<Map<String, dynamic>> createChild({
-  required String parentId,
-  required String firstName,
-  required String lastName,
-  required String gender,
-  required String birthday,   // ✅ الاسم الصحيح
-  required int age,
-  String? notes,
-}) async {
-  final url = Uri.parse("$baseUrl/children/create");
 
-  final response = await http.post(
-    url,
-    headers: {"Content-Type": "application/json"},
-    body: jsonEncode({
-      "parent_id": parentId,
-      "first_name": firstName,
-      "last_name": lastName,
-      "gender": gender,
-     "birthdate": birthday,
-      "age": age,
-      "notes": notes,
-    }),
-  );
-
-  if (response.statusCode != 200 && response.statusCode != 201) {
-    throw Exception("Create child failed: ${response.body}");
-  }
-
-  return jsonDecode(response.body);
-}
 
 
 
   // =========================
   // ✅ Get Children By Parent
   // =========================
-  static Future<List<Map<String, dynamic>>> getChildrenByParent(
-    String parentId,
-  ) async {
-    final url = Uri.parse("$baseUrl/children/by-parent/$parentId");
+static Future<List<Map<String, dynamic>>> getChildrenByParent(
+  String parentId,
+) async {
+  final url = Uri.parse("$baseUrl/children/by-parent/$parentId");
 
-    final response = await http.get(url);
+  final response = await http.get(url);
 
-    if (response.statusCode != 200) {
-      throw Exception("Failed to load children");
-    }
+  print("🟢 CHILDREN STATUS: ${response.statusCode}");
+  print("🟢 CHILDREN BODY: ${response.body}");
 
-    final List data = jsonDecode(response.body);
-    return data.cast<Map<String, dynamic>>();
+  if (response.statusCode != 200) {
+    throw Exception("Failed to load children: ${response.body}");
   }
+
+  final decoded = jsonDecode(response.body);
+
+  // ✅ الصحيح لأن الباك يرجّع {"data": [...] }
+  if (decoded is Map && decoded["data"] != null) {
+    return List<Map<String, dynamic>>.from(decoded["data"]);
+  }
+
+  // ✅ في حال رجع List مباشر (احتياط)
+  if (decoded is List) {
+    return List<Map<String, dynamic>>.from(decoded);
+  }
+
+  return [];
+}
+
 
   // =========================
   // ✅ Get Provider By ID
@@ -320,9 +454,28 @@ static Future<Map<String, dynamic>> getProviderById(
 
   throw Exception("Invalid provider response format");
 }
+// =========================
+// ✅ Update Child (FULL UPDATE)
+// =========================
+static Future<void> updateChild({
+  required String childId,
+  required Map<String, dynamic> data,
+}) async {
+  final url = Uri.parse("$baseUrl/children/$childId");
 
+  final response = await http.put(
+    url,
+    headers: {"Content-Type": "application/json"},
+    body: jsonEncode(data),
+  );
 
+  print("🟡 UPDATE CHILD STATUS: ${response.statusCode}");
+  print("🟡 UPDATE CHILD BODY: ${response.body}");
 
+  if (response.statusCode != 200) {
+    throw Exception("Failed to update child: ${response.body}");
+  }
+}
 
   // =========================
   // ✅ Get Parent By ID
@@ -481,21 +634,38 @@ static Future<void> updateProvider({
   }
 }
 
+// =========================
+// ✅ Delete Child
+// =========================
+static Future<void> deleteChild(String childId) async {
+  final url = Uri.parse("$baseUrl/children/$childId");
+
+  final response = await http.delete(
+    url,
+    headers: {"Content-Type": "application/json"},
+  );
+
+  print("🟥 DELETE CHILD STATUS: ${response.statusCode}");
+  print("🟥 DELETE CHILD BODY: ${response.body}");
+
+  if (response.statusCode != 200 && response.statusCode != 204) {
+    throw Exception("Failed to delete child: ${response.body}");
+  }
+}
 
 // =========================
-// ✅ Update Booking Status
+// ✅ Update Booking Status (NEW ROUTE)
 // =========================
 static Future<void> updateBookingStatus({
   required String bookingId,
   required String status,
 }) async {
-  final url = Uri.parse("$baseUrl/bookings/update-status");
+  final url = Uri.parse("$baseUrl/bookings/$bookingId/status");
 
   final response = await http.put(
     url,
     headers: {"Content-Type": "application/json"},
     body: jsonEncode({
-      "booking_id": bookingId,
       "status": status,
     }),
   );
@@ -503,34 +673,6 @@ static Future<void> updateBookingStatus({
   if (response.statusCode != 200) {
     throw Exception("Failed to update booking status");
   }
-}
-static Future<Map<String, dynamic>> getActivityById(String activityId) async {
-  final url = Uri.parse("$baseUrl/activities/$activityId");
-
-  print("🔵 FETCH ACTIVITY URL: $url");
-
-  final response = await http.get(url);
-
-  print("🔵 ACTIVITY STATUS: ${response.statusCode}");
-  print("🔵 ACTIVITY BODY: ${response.body}");
-
-  if (response.statusCode != 200) {
-    throw Exception("Failed to load activity");
-  }
-
-  final decoded = jsonDecode(response.body);
-
-  // ✅ لو الباك يرجّع داخل data
-  if (decoded is Map && decoded["data"] != null) {
-    return Map<String, dynamic>.from(decoded["data"]);
-  }
-
-  // ✅ لو يرجّع مباشر
-  if (decoded is Map) {
-    return Map<String, dynamic>.from(decoded);
-  }
-
-  throw Exception("Invalid activity response format");
 }
 
   // =========================

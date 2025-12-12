@@ -25,6 +25,7 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
   final List<Map<String, dynamic>> _children = [];
   bool _acceptedTerms = false;
   bool _obscurePassword = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -163,9 +164,20 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
                   const SizedBox(height: 20),
 
                   ShinyButton(
-                    text: "Create Account",
-                    onPressed: _registerParentAndChildren,
-                  ),
+  text: _isLoading ? "Creating..." : "Create Account",
+  onPressed: _isLoading ? null : _registerParentAndChildren,
+  child: _isLoading
+      ? const SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: Colors.white,
+          ),
+        )
+      : null,
+),
+
                 ],
               ),
             ),
@@ -176,54 +188,68 @@ class _ParentRegistrationScreenState extends State<ParentRegistrationScreen> {
   }
 
   // ================= COMPLETE REGISTRATION =================
-  Future<void> _registerParentAndChildren() async {
-    if (!_formKey.currentState!.validate()) return;
+ Future<void> _registerParentAndChildren() async {
+  if (_isLoading) return;
 
-    if (!_acceptedTerms) {
-      if (!mounted) return;
-      _showMessage(
-        context,
-        "Error",
-        "You must accept the Saifi Terms & Conditions.",
-      );
-      return;
-    }
+  if (!_formKey.currentState!.validate()) return;
 
-    if (_children.isEmpty) {
-      if (!mounted) return;
-      _showMessage(context, "Error", "Add at least one child.");
-      return;
-    }
+  if (!_acceptedTerms) {
+    if (!mounted) return;
+    _showMessage(
+      context,
+      "Error",
+      "You must accept the Saifi Terms & Conditions.",
+    );
+    return;
+  }
 
-    try {
-      final parentResult = await ApiService.registerParent(
-        firstName: _firstNameController.text.trim(),
-        lastName: _lastNameController.text.trim(),
-        email: _emailController.text.trim(),
-        phone: _phoneController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
+  if (_children.isEmpty) {
+    if (!mounted) return;
+    _showMessage(context, "Error", "Add at least one child.");
+    return;
+  }
 
-      if (!mounted) return;
+  setState(() => _isLoading = true); // ✅ تشغيل اللودنق فعليًا
 
-      final parentId = parentResult["parent_id"].toString();
+  try {
+    final parentResult = await ApiService.registerParent(
+      firstName: _firstNameController.text.trim(),
+      lastName: _lastNameController.text.trim(),
+      email: _emailController.text.trim(),
+      phone: _phoneController.text.trim(),
+      password: _passwordController.text.trim(),
+    );
 
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString("parent_id", parentId);
+    if (!mounted) return;
 
-      if (!mounted) return;
+    final parentId = parentResult["parent_id"].toString();
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ChildInfoScreen(children: _children),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      _showMessage(context, "Registration Failed", e.toString());
+    final fullName =
+        "${_firstNameController.text.trim()} ${_lastNameController.text.trim()}";
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString("parent_id", parentId);
+    await prefs.setString("parent_name", fullName);
+    await prefs.setString("role", "parent");
+
+    if (!mounted) return;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChildInfoScreen(children: _children),
+      ),
+    );
+  } catch (e) {
+    if (!mounted) return;
+    _showMessage(context, "Registration Failed", e.toString());
+  } finally {
+    if (mounted) {
+      setState(() => _isLoading = false); // ✅ إيقاف اللودنق
     }
   }
+}
+
 
   // ================= TERMS & CONDITIONS POPUP =================
   void _showTermsDialog() {

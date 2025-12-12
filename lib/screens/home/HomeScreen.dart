@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'browse_activities_screen.dart';
 import '../register/role_selection_screen.dart';
 import 'chatbot_screen.dart';
 import '../service/theme.dart';
@@ -10,29 +10,46 @@ import '../booking/booking_screen.dart';
 import 'add_child.dart';
 
 class HomeScreen extends StatefulWidget {
-  final String userName;
-
-  const HomeScreen({super.key, required this.userName});
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   bool _isArabic = false;
+  String _userName = "";
 
   late List<Widget> _pages;
 
-  @override
-  void initState() {
-    super.initState();
+@override
+void initState() {
+  super.initState();
+  _loadUserName();
+
+  _pages = [
+    HomePage(userName: _userName),
+    const ChatbotScreen(),
+    ProfilePage(),
+  ];
+}
+
+Future<void> _loadUserName() async {
+  final prefs = await SharedPreferences.getInstance();
+  final name = prefs.getString("parent_name") ?? "";
+
+  setState(() {
+    _userName = name;
     _pages = [
-      HomePage(userName: widget.userName),
+      HomePage(userName: _userName),
       const ChatbotScreen(),
       ProfilePage(),
     ];
-  }
+  });
+}
+
 
  Future<void> _logout() async {
   final prefs = await SharedPreferences.getInstance();
@@ -289,7 +306,19 @@ class HomePage extends StatelessWidget {
   Widget _buildMainOptions(BuildContext context) {
     return Column(
       children: [
-        _homeButton(icon: Icons.explore, title: "Browse Activities", onTap: () {}),
+        _homeButton(
+  icon: Icons.explore,
+  title: "Browse Activities",
+  onTap: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const BrowseActivitiesScreen(),
+      ),
+    );
+  },
+),
+
         _homeButton(
           icon: Icons.smart_toy,
           title: "Saifi Assistant",

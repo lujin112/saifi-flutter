@@ -58,4 +58,4 @@ flutter:
     - assets/slideshow1.png
     - assets/slideshow2.png
     - assets/login.png
-   # - assets/saifibot.json
+    #- assets/saifibot.json

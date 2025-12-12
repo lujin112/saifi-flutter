@@ -93,10 +93,8 @@ class _LoginScreenState extends State<LoginScreen>
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
-          builder: (_) => HomeScreen(
-            userName:
-                "${result["first_name"]} ${result["last_name"]}",
-          ),
+          builder: (_) => const HomeScreen()
+
         ),
         (route) => false,
       );
@@ -127,8 +125,10 @@ class _LoginScreenState extends State<LoginScreen>
       );
     }
   } catch (e) {
-    _showMessage("Invalid login credentials");
-  } finally {
+  print("LOGIN ERROR: $e");
+  _showMessage(e.toString());
+}
+ finally {
     if (mounted) {
       setState(() => _isLoading = false);
     }

@@ -6,7 +6,6 @@ import '../service/theme.dart';
 import '../booking/booking_screen.dart';
 import '../profile/edit_parent_profile_screen.dart';
 import '../profile/password_security_screen.dart';
-import '../profile/language_screen.dart';
 import 'notifications_screen.dart';
 import '../profile/about_us_screen.dart';
 
@@ -109,20 +108,6 @@ class _ProfilePageState extends State<ProfilePage> {
                       Text(email,
                           style: const TextStyle(color: Colors.grey)),
 
-                      const SizedBox(height: 10),
-
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  EditParentProfileScreen(parentId: parentId!),
-                            ),
-                          ).then((_) => _loadParent());
-                        },
-                        child: const Text("Edit Profile"),
-                      ),
                     ],
                   ),
                 )
@@ -190,17 +175,7 @@ class _ProfilePageState extends State<ProfilePage> {
             },
           ),
 
-          _navCard(
-            icon: Icons.language,
-            title: "Language",
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const LanguageScreen()),
-              );
-            },
-          ),
-
+  
           _navCard(
             icon: Icons.notifications,
             title: "Notifications",

@@ -151,7 +151,7 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
 
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => HomeScreen(userName: name)),
+        MaterialPageRoute(builder: (_) => HomeScreen()),
         (_) => false,
       );
     } catch (e) {

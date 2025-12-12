@@ -17,9 +17,21 @@ class _AddChildScreenState extends State<AddChildScreen> {
   final _lastNameController = TextEditingController();
   final _notesController = TextEditingController();
 
+  // ✅ Interest Chips Data
+  static const Map<String, IconData> _interestTypes = {
+    'Sports': Icons.sports_soccer,
+    'Technology': Icons.memory,
+    'Swimming': Icons.pool,
+    'Art': Icons.brush,
+    'Language': Icons.language,
+    'Self-Defense': Icons.sports_mma,
+  };
+
+  final List<String> _selectedInterests = [];
+
   DateTime? _birthDate;
   int _age = 0;
-  String _gender = "Male";
+  String _gender = "male";
 
   bool _isSaving = false;
 
@@ -57,14 +69,18 @@ class _AddChildScreenState extends State<AddChildScreen> {
     }
   }
 
-  // ✅ SAVE TO POSTGRESQL VIA API (FIXED ✅)
   Future<void> _saveChild() async {
     if (!_formKey.currentState!.validate() || _birthDate == null) return;
     if (_isSaving) return;
 
-    if (mounted) {
-      setState(() => _isSaving = true);
+    if (_selectedInterests.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please select at least one interest")),
+      );
+      return;
     }
+
+    setState(() => _isSaving = true);
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -74,16 +90,16 @@ class _AddChildScreenState extends State<AddChildScreen> {
         throw Exception("Parent not logged in");
       }
 
-      final birthdayStr =
-          _birthDate!.toIso8601String().substring(0, 10);
+      final birthdayStr = _birthDate!.toIso8601String().substring(0, 10);
 
       await ApiService.createChild(
         parentId: parentId,
         firstName: _firstNameController.text.trim(),
         lastName: _lastNameController.text.trim(),
-        gender: _gender,          // ✅ بدون lowercase
-        birthday: birthdayStr,    // ✅ الاسم الصحيح
+        gender: _gender,
+        birthday: birthdayStr,
         age: _age,
+        interests: _selectedInterests,
         notes: _notesController.text.trim().isEmpty
             ? null
             : _notesController.text.trim(),
@@ -95,17 +111,18 @@ class _AddChildScreenState extends State<AddChildScreen> {
         const SnackBar(content: Text("Child added successfully")),
       );
 
-      Navigator.pop(context);
-    } catch (e) {
-      if (!mounted) return;
+      Navigator.pop(context, true);
+} catch (e) {
+  if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
-      );
-    } finally {
-      if (!mounted) return;
-      setState(() => _isSaving = false);
-    }
+  final errorMsg = e.toString().contains("409")
+      ? "This child is already registered"
+      : "Something went wrong. Please try again.";
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(errorMsg)),
+  );
+}
   }
 
   @override
@@ -125,54 +142,44 @@ class _AddChildScreenState extends State<AddChildScreen> {
               key: _formKey,
               child: Column(
                 children: [
-                  // First Name
                   TextFormField(
                     controller: _firstNameController,
-                    decoration: const InputDecoration(
-                      labelText: "First Name",
-                    ),
+                    decoration: const InputDecoration(labelText: "First Name"),
                     validator: (v) =>
                         v == null || v.isEmpty ? "Required" : null,
                   ),
 
                   const SizedBox(height: 14),
 
-                  // Last Name
                   TextFormField(
                     controller: _lastNameController,
-                    decoration: const InputDecoration(
-                      labelText: "Last Name",
-                    ),
+                    decoration: const InputDecoration(labelText: "Last Name"),
                     validator: (v) =>
                         v == null || v.isEmpty ? "Required" : null,
                   ),
 
                   const SizedBox(height: 16),
 
-                  // Gender
                   Row(
                     children: [
                       const Text("Gender: "),
                       Radio(
-                        value: "Male",
+                        value: "male",
                         groupValue: _gender,
-                        onChanged: (v) =>
-                            setState(() => _gender = v!),
+                        onChanged: (v) => setState(() => _gender = v!),
                       ),
-                      const Text("Male"),
+                      const Text("male"),
                       Radio(
-                        value: "Female",
+                        value: "female",
                         groupValue: _gender,
-                        onChanged: (v) =>
-                            setState(() => _gender = v!),
+                        onChanged: (v) => setState(() => _gender = v!),
                       ),
-                      const Text("Female"),
+                      const Text("female"),
                     ],
                   ),
 
                   const SizedBox(height: 16),
 
-                  // Birthday
                   GestureDetector(
                     onTap: _pickBirthDate,
                     child: Container(
@@ -204,9 +211,50 @@ class _AddChildScreenState extends State<AddChildScreen> {
                       child: Text("Age: $_age"),
                     ),
 
+                  const SizedBox(height: 20),
+
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "Interests",
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: _interestTypes.entries.map((entry) {
+                      final isSelected =
+                          _selectedInterests.contains(entry.key);
+
+                      return FilterChip(
+                        label: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(entry.value, size: 18),
+                            const SizedBox(width: 6),
+                            Text(entry.key),
+                          ],
+                        ),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          setState(() {
+                            if (selected) {
+                              _selectedInterests.add(entry.key);
+                            } else {
+                              _selectedInterests.remove(entry.key);
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ),
+
                   const SizedBox(height: 16),
 
-                  // Notes
                   TextFormField(
                     controller: _notesController,
                     maxLines: 2,

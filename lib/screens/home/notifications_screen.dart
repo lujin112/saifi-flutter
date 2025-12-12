@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../service/theme.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -61,55 +62,89 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
 
     return Scaffold(
+      backgroundColor: AppColors.background, // ✅ خلفية الثيم
       appBar: AppBar(
         title: const Text("Notifications"),
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.primary, // ✅ لون الثيم
+        foregroundColor: Colors.white,
         elevation: 0,
-        foregroundColor: Colors.black87,
       ),
 
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            SwitchListTile(
-              activeColor: Colors.teal,
-              title: const Text("Booking Updates"),
-              value: bookingUpdates,
-              onChanged: (value) {
-                setState(() => bookingUpdates = value);
-              },
-            ),
 
-            SwitchListTile(
-              activeColor: Colors.teal,
-              title: const Text("Child Activity Alerts"),
-              value: childActivity,
-              onChanged: (value) {
-                setState(() => childActivity = value);
-              },
-            ),
-
-            SwitchListTile(
-              activeColor: Colors.teal,
-              title: const Text("System Alerts"),
-              value: systemAlerts,
-              onChanged: (value) {
-                setState(() => systemAlerts = value);
-              },
-            ),
-
-            const SizedBox(height: 30),
-
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal,
-                padding: const EdgeInsets.symmetric(vertical: 14),
+            // ========= SWITCH CARD =========
+            Container(
+              padding: const EdgeInsets.all(8),
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
               ),
-              onPressed: _saveSettings,
-              child: const Text(
-                "Save",
-                style: TextStyle(fontSize: 16),
+              child: SwitchListTile(
+                activeColor: AppColors.primary, // ✅ لون الثيم
+                title: const Text("Booking Updates"),
+                value: bookingUpdates,
+                onChanged: (value) {
+                  setState(() => bookingUpdates = value);
+                },
+              ),
+            ),
+
+            Container(
+              padding: const EdgeInsets.all(8),
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: SwitchListTile(
+                activeColor: AppColors.primary,
+                title: const Text("Child Activity Alerts"),
+                value: childActivity,
+                onChanged: (value) {
+                  setState(() => childActivity = value);
+                },
+              ),
+            ),
+
+            Container(
+              padding: const EdgeInsets.all(8),
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: SwitchListTile(
+                activeColor: AppColors.primary,
+                title: const Text("System Alerts"),
+                value: systemAlerts,
+                onChanged: (value) {
+                  setState(() => systemAlerts = value);
+                },
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // ========= SAVE BUTTON =========
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary, // ✅ ثيم
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: _saveSettings,
+                child: const Text(
+                  "Save",
+                  style: TextStyle(fontSize: 16, color: Colors.white),
+                ),
               ),
             )
           ],

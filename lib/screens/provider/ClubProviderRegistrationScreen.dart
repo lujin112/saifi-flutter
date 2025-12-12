@@ -15,8 +15,7 @@ class ClubProviderRegistrationScreen extends StatefulWidget {
 }
 
 class _ClubProviderRegistrationScreenState
-    extends State<ClubProviderRegistrationScreen>
-    with SingleTickerProviderStateMixin {
+    extends State<ClubProviderRegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final TextEditingController _providerNameController = TextEditingController();
@@ -29,29 +28,12 @@ class _ClubProviderRegistrationScreenState
   bool _obscurePassword = true;
   bool _isRegistering = false;
 
-  late AnimationController _arrowController;
-  late Animation<double> _arrowAnimation;
-
   GoogleMapController? _mapController;
   LatLng? _selectedLatLng;
   String _locationName = "No location selected";
 
   @override
-  void initState() {
-    super.initState();
-    _arrowController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    )..repeat(reverse: true);
-
-    _arrowAnimation = Tween<double>(begin: 0, end: 8).animate(
-      CurvedAnimation(parent: _arrowController, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
   void dispose() {
-    _arrowController.dispose();
     _providerNameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
@@ -86,27 +68,18 @@ class _ClubProviderRegistrationScreenState
     }
   }
 
-  // ✅ REGISTER (DIAGNOSTIC VERSION)
+  // ✅ REGISTER
   Future<void> _register() async {
-    print("REGISTER BUTTON PRESSED");
-
-    if (!_formKey.currentState!.validate()) {
-      print("FORM VALIDATION FAILED");
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     if (_selectedLatLng == null) {
-      print("LOCATION NOT SELECTED");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please select location")),
       );
       return;
     }
 
-    if (_isRegistering) {
-      print("ALREADY REGISTERING");
-      return;
-    }
+    if (_isRegistering) return;
 
     setState(() => _isRegistering = true);
 
@@ -121,31 +94,22 @@ class _ClubProviderRegistrationScreenState
         "address": _locationName,
       };
 
-      print("PROVIDER DATA: $providerData");
-
-      // 1️⃣ Register
-      print("BEFORE REGISTER API");
       final registerResult =
           await ApiService.registerProvider(providerData);
-      print("AFTER REGISTER API: $registerResult");
 
-      // 2️⃣ Login
-      print("BEFORE LOGIN API");
       final loginResult = await ApiService.loginProvider(
         email: _isEmailMode ? _emailController.text.trim() : null,
         phone: !_isEmailMode ? _phoneController.text.trim() : null,
         password: _passwordController.text.trim(),
       );
-      print("AFTER LOGIN API: $loginResult");
 
-      // 3️⃣ Save in SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(
           "provider_id", loginResult["provider_id"].toString());
       await prefs.setString(
           "provider_name", loginResult["name"].toString());
 
-      print("DATA SAVED IN SHARED PREFS");
+      if (!mounted) return;
 
       Navigator.pushReplacement(
         context,
@@ -154,12 +118,14 @@ class _ClubProviderRegistrationScreenState
         ),
       );
     } catch (e) {
-      print("REGISTER ERROR: $e");
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Registration error: $e")),
       );
     } finally {
-      setState(() => _isRegistering = false);
+      if (mounted) {
+        setState(() => _isRegistering = false);
+      }
     }
   }
 
@@ -309,9 +275,6 @@ class _ClubProviderRegistrationScreenState
                               ),
                             },
                       onTap: (latLng) async {
-                        print(
-                            "MAP TAP: ${latLng.latitude}, ${latLng.longitude}");
-
                         final placemarks =
                             await placemarkFromCoordinates(
                           latLng.latitude,
@@ -347,30 +310,34 @@ class _ClubProviderRegistrationScreenState
 
                 const SizedBox(height: 30),
 
-                // ✅ الزر بعد استبدال GestureDetector بـ InkWell
-                InkWell(
-                  onTap: _isRegistering ? null : _register,
-                  borderRadius: BorderRadius.circular(100),
-                  child: AnimatedBuilder(
-                    animation: _arrowAnimation,
-                    builder: (context, child) {
-                      return Container(
-                        width: 60,
-                        height: 60,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Color(0xFF80C4C0),
-                        ),
-                        child: Transform.translate(
-                          offset: Offset(_arrowAnimation.value - 4, 0),
-                          child: const Icon(
-                            Icons.arrow_forward,
-                            size: 32,
-                            color: Colors.white,
+                SizedBox(
+                  width: double.infinity,
+                  height: 55,
+                  child: ElevatedButton(
+                    onPressed: _isRegistering ? null : _register,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF80C4C0),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: _isRegistering
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text(
+                            "Register",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
                           ),
-                        ),
-                      );
-                    },
                   ),
                 ),
               ],

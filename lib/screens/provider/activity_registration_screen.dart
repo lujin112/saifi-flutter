@@ -217,6 +217,7 @@ Future<void> _saveActivity(BuildContext context) async {
       _capacityController.text.isEmpty ||
       _priceController.text.isEmpty) {
     _showMessage(context, 'Error', 'Please fill all required fields', false);
+
     return;
   }
 
@@ -267,9 +268,14 @@ Future<void> _saveActivity(BuildContext context) async {
     );
 
     _clearForm();
-  } catch (e) {
-    _showMessage(context, 'Error', 'Failed to save activity: $e', false);
-  }
+} catch (e) {
+  final errorMsg = e.toString().toLowerCase().contains("duplicate")
+      ? "This activity already exists with the same title, dates, and gender."
+      : "Failed to save activity. Please try again.";
+
+  _showMessage(context, 'Error', errorMsg, false);
+}
+
 }
 
 
