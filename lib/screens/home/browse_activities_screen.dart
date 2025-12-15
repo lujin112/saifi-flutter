@@ -4,7 +4,6 @@ import '../service/api_service.dart';
 import 'activity_details_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-
 class BrowseActivitiesScreen extends StatefulWidget {
   const BrowseActivitiesScreen({super.key});
 
@@ -17,89 +16,87 @@ class _BrowseActivitiesScreenState
     extends State<BrowseActivitiesScreen> {
 
   late Future<List<Map<String, dynamic>>> _activitiesFuture;
+
   List<Map<String, dynamic>> _recommendations = [];
   bool _loadingRecommendations = true;
-
 
   final TextEditingController _searchController = TextEditingController();
   List<Map<String, dynamic>> _allActivities = [];
   List<Map<String, dynamic>> _filteredActivities = [];
 
-@override
-void initState() {
-  super.initState();
+  @override
+  void initState() {
+    super.initState();
 
-  _activitiesFuture = ApiService.getAllActivities();
-  _loadAllChildrenRecommendations();
+    _activitiesFuture = ApiService.getAllActivities();
+    _loadAllChildrenRecommendations();
 
-  _searchController.addListener(_onSearchChanged);
-}
-Future<void> _loadAllChildrenRecommendations() async {
-  try {
-    setState(() {
-      _loadingRecommendations = true;
-    });
-
-    final prefs = await SharedPreferences.getInstance();
-    final parentId = prefs.getString("parent_id");
-
-    if (parentId == null) {
-      setState(() => _loadingRecommendations = false);
-      return;
-    }
-
-    // 1️⃣ نجيب كل الأطفال
-    final children =
-        await ApiService.getChildrenByParent(parentId);
-
-    List<Map<String, dynamic>> allRecs = [];
-
-    // 2️⃣ نجيب توصيات كل طفل
-for (final child in children) {
-  final childId = child["child_id"];
-  final childName = child["first_name"]; // ← اسم الطفل
-
-  final recs =
-      await ApiService.getInitialRecommendations(childId);
-
-  // ✅ نوسم كل توصية باسم الطفل
-  for (final r in recs) {
-    r["recommended_for_child"] = childName;
-    r["recommended_for_child_id"] = childId;
+    _searchController.addListener(_onSearchChanged);
   }
 
-  allRecs.addAll(recs);
-}
+  Future<void> _loadAllChildrenRecommendations() async {
+    try {
+      setState(() => _loadingRecommendations = true);
 
+      final prefs = await SharedPreferences.getInstance();
+      final parentId = prefs.getString("parent_id");
 
-    // 3️⃣ نحذف المكررات (نفس النشاط لطفلين)
-    final uniqueMap = <String, Map<String, dynamic>>{};
-    for (var r in allRecs) {
-      uniqueMap[r["activity_id"]] = r;
+      if (parentId == null) {
+        setState(() => _loadingRecommendations = false);
+        return;
+      }
+
+      final children =
+          await ApiService.getChildrenByParent(parentId);
+
+      List<Map<String, dynamic>> allRecs = [];
+
+      for (final child in children) {
+        final childId = child["child_id"];
+        final childName = child["first_name"];
+
+        final recs =
+            await ApiService.getInitialRecommendations(childId);
+
+        for (final r in recs) {
+          r["recommended_for_child"] = childName;
+          r["recommended_for_child_id"] = childId;
+        }
+
+        allRecs.addAll(recs);
+      }
+
+      final uniqueMap = <String, Map<String, dynamic>>{};
+      for (var r in allRecs) {
+        uniqueMap[r["activity_id"]] = r;
+      }
+
+      setState(() {
+        _recommendations = uniqueMap.values.toList();
+        _loadingRecommendations = false;
+      });
+    } catch (e) {
+      _loadingRecommendations = false;
+      debugPrint("❌ Failed to load recommendations: $e");
     }
-
-    setState(() {
-      _recommendations = uniqueMap.values.toList();
-      _loadingRecommendations = false;
-    });
-  } catch (e) {
-    setState(() {
-      _loadingRecommendations = false;
-    });
-    print("❌ Failed to load all recommendations: $e");
   }
-}
-
 
   void _onSearchChanged() {
     final query = _searchController.text.toLowerCase();
 
     setState(() {
-      _filteredActivities = _allActivities.where((a) {
-        final title = (a["title"] ?? "").toString().toLowerCase();
-        final description = (a["description"] ?? "").toString().toLowerCase();
-        return title.contains(query) || description.contains(query);
-      }).toList();
+      if (query.isEmpty) {
+        _filteredActivities = List.from(_allActivities);
+      } else {
+        _filteredActivities = _allActivities.where((a) {
+          final title =
+              (a["title"] ?? "").toString().toLowerCase();
+          final description =
+              (a["description"] ?? "").toString().toLowerCase();
+          return title.contains(query) ||
+              description.contains(query);
+        }).toList();
+      }
     });
   }
 
@@ -130,38 +127,33 @@ for (final child in children) {
         body: FutureBuilder<List<Map<String, dynamic>>>(
           future: _activitiesFuture,
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+            if (snapshot.connectionState ==
+                ConnectionState.waiting) {
+              return const Center(
+                  child: CircularProgressIndicator());
             }
 
             if (snapshot.hasError) {
-              return Center(
-                child: Text(
-                  snapshot.error.toString(),
-                  style: const TextStyle(fontFamily: 'RobotoMono'),
-                ),
-              );
-            }
-
-            _allActivities = snapshot.data ?? [];
-
-            if (_searchController.text.isEmpty) {
-              _filteredActivities = _allActivities;
-            }
-
-            if (_filteredActivities.isEmpty) {
               return const Center(
                 child: Text(
-                  "No activities found",
-                  style: TextStyle(fontFamily: 'RobotoMono'),
+                  "Failed to load activities",
+                  style:
+                      TextStyle(fontFamily: 'RobotoMono'),
                 ),
               );
+            }
+
+            if (snapshot.hasData && _allActivities.isEmpty) {
+              _allActivities = snapshot.data!;
+              _filteredActivities =
+                  List.from(_allActivities);
             }
 
             return SingleChildScrollView(
               padding: const EdgeInsets.all(20),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 children: [
 
                   // ================= Search Box =================
@@ -169,11 +161,13 @@ for (final child in children) {
                     controller: _searchController,
                     decoration: InputDecoration(
                       hintText: "Search activities...",
-                      prefixIcon: const Icon(Icons.search),
+                      prefixIcon:
+                          const Icon(Icons.search),
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius:
+                            BorderRadius.circular(14),
                         borderSide: BorderSide.none,
                       ),
                     ),
@@ -183,17 +177,21 @@ for (final child in children) {
 
                   // ================= Recommendation Box =================
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding:
+                        const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          AppColors.primary.withOpacity(0.15),
+                          AppColors.primary
+                              .withOpacity(0.15),
                           Colors.white
                         ],
                       ),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius:
+                          BorderRadius.circular(14),
                       border: Border.all(
-                        color: AppColors.primary.withOpacity(0.2),
+                        color: AppColors.primary
+                            .withOpacity(0.2),
                       ),
                     ),
                     child: const Text(
@@ -209,23 +207,40 @@ for (final child in children) {
                   const SizedBox(height: 16),
 
                   // ================= Recommended (Horizontal) =================
-                    SizedBox(
-                      height: 190,
-                      child: _loadingRecommendations
-                          ? const Center(child: CircularProgressIndicator())
-                          : _recommendations.isEmpty
-                              ? const Center(child: Text("No recommendations yet"))
-                              : ListView.separated(
-                                  scrollDirection: Axis.horizontal,
-                                  itemCount: _recommendations.length,
-                                  separatorBuilder: (_, __) =>
-                                      const SizedBox(width: 12),
-                                  itemBuilder: (context, index) {
-                                    final a = _recommendations[index];
-                                    return _recommendedCard(a);
-                                  },
-                                ),
-                    ),
+                  SizedBox(
+                    height: 190,
+                    child: _loadingRecommendations
+                        ? const Center(
+                            child:
+                                CircularProgressIndicator())
+                        : _recommendations.isEmpty
+                            ? const Center(
+                                child: Text(
+                                    "No recommendations yet"))
+                            : ListView.separated(
+                                scrollDirection:
+                                    Axis.horizontal,
+                                itemCount:
+                                    _recommendations
+                                        .length,
+                                separatorBuilder:
+                                    (_, __) =>
+                                        const SizedBox(
+                                            width: 12),
+                                itemBuilder:
+                                    (context, index) {
+                                  final a =
+                                      _recommendations[
+                                          index];
+                                  return
+                                      _recommendedCard(
+                                          a);
+                                },
+                              ),
+                  ),
+
+                  const SizedBox(height: 16),
+
                   // ================= All Activities Header =================
                   Row(
                     mainAxisAlignment:
@@ -236,13 +251,14 @@ for (final child in children) {
                         style: TextStyle(
                           fontFamily: 'RobotoMono',
                           fontSize: 20,
-                          fontWeight: FontWeight.bold,
+                          fontWeight:
+                              FontWeight.bold,
                         ),
                       ),
-
                       IconButton(
                         onPressed: () {},
-                        icon: const Icon(Icons.filter_list),
+                        icon: const Icon(
+                            Icons.filter_list),
                       )
                     ],
                   ),
@@ -252,10 +268,14 @@ for (final child in children) {
                   // ================= All Activities (Vertical) =================
                   ListView.builder(
                     shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _filteredActivities.length,
-                    itemBuilder: (context, index) {
-                      final a = _filteredActivities[index];
+                    physics:
+                        const NeverScrollableScrollPhysics(),
+                    itemCount:
+                        _filteredActivities.length,
+                    itemBuilder:
+                        (context, index) {
+                      final a =
+                          _filteredActivities[index];
                       return _activityCard(a);
                     },
                   ),
@@ -268,14 +288,15 @@ for (final child in children) {
     );
   }
 
-  // ================= Recommended Card (Horizontal) =================
+  // ================= Recommended Card =================
   Widget _recommendedCard(Map<String, dynamic> a) {
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => ActivityDetailsPage(activity: a),
+            builder: (_) =>
+                ActivityDetailsPage(activity: a),
           ),
         );
       },
@@ -284,53 +305,56 @@ for (final child in children) {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius:
+              BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withOpacity(0.15),
+              color: AppColors.primary
+                  .withOpacity(0.15),
               blurRadius: 6,
               offset: const Offset(0, 3),
             ),
           ],
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment:
+              CrossAxisAlignment.start,
           children: [
             const Icon(Icons.local_activity,
-                color: AppColors.primary, size: 36),
+                color: AppColors.primary,
+                size: 36),
             const SizedBox(height: 10),
-
             Text(
               a["title"] ?? "Activity",
               maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+              overflow:
+                  TextOverflow.ellipsis,
               style: const TextStyle(
                 fontFamily: 'RobotoMono',
-                fontWeight: FontWeight.bold,
+                fontWeight:
+                    FontWeight.bold,
               ),
             ),
-
             const SizedBox(height: 6),
-
-            // ✅ اسم الطفل الموصى له
-            if (a["recommended_for_child"] != null)
+            if (a["recommended_for_child"] !=
+                null)
               Text(
                 "For ${a["recommended_for_child"]}",
                 style: const TextStyle(
-                  fontFamily: 'RobotoMono',
+                  fontFamily:
+                      'RobotoMono',
                   fontSize: 12,
                   color: Colors.grey,
                 ),
               ),
-
             const Spacer(),
-
-
             Text(
               "${a["price"] ?? 0} SAR",
               style: const TextStyle(
-                fontFamily: 'RobotoMono',
-                color: AppColors.primary,
+                fontFamily:
+                    'RobotoMono',
+                color:
+                    AppColors.primary,
               ),
             ),
           ],
@@ -339,26 +363,30 @@ for (final child in children) {
     );
   }
 
-  // ================= Normal Activity Card (Vertical) =================
+  // ================= Normal Activity Card =================
   Widget _activityCard(Map<String, dynamic> a) {
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => ActivityDetailsPage(activity: a),
+            builder: (_) =>
+                ActivityDetailsPage(activity: a),
           ),
         );
       },
       child: Container(
         padding: const EdgeInsets.all(16),
-        margin: const EdgeInsets.only(bottom: 12),
+        margin:
+            const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius:
+              BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withOpacity(0.15),
+              color: AppColors.primary
+                  .withOpacity(0.15),
               blurRadius: 6,
               offset: const Offset(0, 3),
             ),
@@ -367,45 +395,50 @@ for (final child in children) {
         child: Row(
           children: [
             const Icon(Icons.local_activity,
-                color: AppColors.primary, size: 34),
+                color: AppColors.primary,
+                size: 34),
             const SizedBox(width: 12),
-
             Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 children: [
                   Text(
-                    a["title"] ?? "Activity",
+                    a["title"] ??
+                        "Activity",
                     style: const TextStyle(
-                      fontFamily: 'RobotoMono',
-                      fontWeight: FontWeight.bold,
+                      fontFamily:
+                          'RobotoMono',
+                      fontWeight:
+                          FontWeight.bold,
                       fontSize: 15,
                     ),
                   ),
-
                   const SizedBox(height: 6),
-
                   Text(
                     a["description"] ?? "",
                     maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                    overflow:
+                        TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontFamily: 'RobotoMono',
+                      fontFamily:
+                          'RobotoMono',
                       fontSize: 12,
                     ),
                   ),
                 ],
               ),
             ),
-
             const SizedBox(width: 10),
-
             Text(
               "${a["price"] ?? 0} SAR",
               style: const TextStyle(
-                fontFamily: 'RobotoMono',
-                color: AppColors.primary,
-                fontWeight: FontWeight.bold,
+                fontFamily:
+                    'RobotoMono',
+                color:
+                    AppColors.primary,
+                fontWeight:
+                    FontWeight.bold,
               ),
             ),
           ],

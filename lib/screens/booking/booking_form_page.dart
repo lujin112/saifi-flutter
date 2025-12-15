@@ -49,20 +49,16 @@ class _BookingFormPageState extends State<BookingFormPage> {
           .getChildrenByParent(parentId)
           .timeout(const Duration(seconds: 10));
 
-      final minAge = widget.activity["min_age"] ?? 0;
-      final maxAge = widget.activity["max_age"] ?? 99;
+
       final activityGender =
           (widget.activity["gender"] ?? "both").toString().toLowerCase();
 
       final filtered = children.where((c) {
-        final age = c["age"] ?? 0;
         final gender = (c["gender"] ?? "").toString().toLowerCase();
-
-        final ageOk = age >= minAge && age <= maxAge;
         final genderOk =
             activityGender == "both" || gender == activityGender;
 
-        return ageOk && genderOk;
+        return genderOk;
       }).toList();
 
       setState(() {

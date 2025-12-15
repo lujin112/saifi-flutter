@@ -48,7 +48,8 @@ class _ProviderActivityDetailsPageState
       // ✅ لو فيه ID → تفاصيل نشاط واحد
       if (widget.activityId != null && widget.activityId!.trim().isNotEmpty) {
         final data = await ApiService.getActivityById(widget.activityId!);
-
+        print("API provider_id: ${data["provider_id"]}");
+        print("Logged provider_id: $loggedProviderId");
         if (data["provider_id"] != loggedProviderId) {
           throw Exception("Unauthorized activity access");
         }
@@ -64,6 +65,8 @@ class _ProviderActivityDetailsPageState
       // ✅ لو ما فيه ID → كل أنشطة البروفايدر
       final activities =
           await ApiService.getProviderActivities(loggedProviderId!);
+          print("Activities type: ${activities.runtimeType}");
+          print("Activities value: $activities");
 
       if (activities.isEmpty) {
         setState(() {
@@ -80,12 +83,14 @@ class _ProviderActivityDetailsPageState
         showList = true;
         isLoading = false;
       });
-    } catch (e) {
-      setState(() {
-        errorMessage = "Failed to load activities";
-        isLoading = false;
-      });
-    }
+    }  catch (e) {
+  print("ERROR 👉 $e");
+  setState(() {
+    errorMessage = e.toString();
+    isLoading = false;
+  });
+}
+
   }
 
   @override
@@ -613,4 +618,3 @@ Future<void> _showEditDialog(Map<String, dynamic> a) async {
 }
 
   }
-

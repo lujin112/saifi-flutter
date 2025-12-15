@@ -98,7 +98,7 @@ Future<void> _updateStatus(String bookingId, String status) async {
                     (data['status'] ?? "pending").toString();
 
                 final bool isFinal =
-                    status == "confirmed" ||
+                    status == "approved" ||
                         status == "rejected";
 
                 return Container(
@@ -130,16 +130,7 @@ Future<void> _updateStatus(String bookingId, String status) async {
                         ),
                       ),
 
-                      const SizedBox(height: 5),
-
-                      Text(
-                        "Parent ID: ${data['parent_id']}",
-                        style: const TextStyle(
-                          fontFamily: 'RobotoMono',
-                          fontSize: 14,
-                          color: Colors.black87,
-                        ),
-                      ),
+                      
 
                       const SizedBox(height: 5),
 
@@ -159,7 +150,7 @@ Future<void> _updateStatus(String bookingId, String status) async {
                           fontFamily: 'RobotoMono',
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: status == "confirmed"
+                          color: status == "approved"
                               ? Colors.green
                               : status == "rejected"
                                   ? Colors.red
@@ -182,7 +173,7 @@ Future<void> _updateStatus(String bookingId, String status) async {
                                   ? null
                                   : () => _updateStatus(
                                         bookingId,
-                                        "confirmed",
+                                        "approved",
                                       ),
                               child: const Text(
                                 "Approve",
