@@ -3,12 +3,13 @@ import '../service/theme.dart';
 import '../service/api_service.dart';
 
 class ProviderBookingsPage extends StatefulWidget {
-  final String activityId;
+final String providerId;
 
   const ProviderBookingsPage({
-    super.key,
-    required this.activityId,
-  });
+  super.key,
+  required this.providerId,
+});
+
 
   @override
   State<ProviderBookingsPage> createState() => _ProviderBookingsPageState();
@@ -24,9 +25,10 @@ class _ProviderBookingsPageState extends State<ProviderBookingsPage> {
   }
 
   void _loadBookings() {
-    _bookingsFuture =
-        ApiService.getBookingsByActivity(activityId: widget.activityId);
-  }
+  _bookingsFuture =
+      ApiService.getBookingsByProvider(widget.providerId);
+}
+
 
   Future<void> _updateStatus(String bookingId, String status) async {
     try {
@@ -128,8 +130,7 @@ class _ProviderBookingsPageState extends State<ProviderBookingsPage> {
                           fontFamily: 'RobotoMono',
                           fontSize: 14,
                         ),
-                      ),
-                      const SizedBox(height: 5),
+                      ),const SizedBox(height: 5),
                       Text(
                         "Status: $status",
                         style: TextStyle(

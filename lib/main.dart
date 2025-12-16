@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'screens/service/theme.dart';
 import 'screens/splash_screen.dart';
 import 'screens/booking/booking_screen.dart';
-
+import 'screens/home/browse_activities_screen.dart';
+import 'screens/profile/about_us_screen.dart';
+import 'screens/profile/kidsinfoscreen.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
@@ -19,8 +21,12 @@ class MyApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       home: const SplashScreen(),
       routes: {
-        '/bookings': (context) => const BookingScreen(),
-      },
+  '/browseActivities': (context) => const BrowseActivitiesScreen(),
+   '/kidsInfo': (context) => const KidsInfoScreen(),
+  '/bookings': (context) => const BookingScreen(),
+  "/about": (context) => const AboutUsScreen(),
+},
+
     );
   }
 }

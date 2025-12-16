@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../service/dialogflow_service.dart';
+import '../service/api_service.dart';
+import 'add_child.dart';
 import '../service/theme.dart';
 
 class ChatbotScreen extends StatefulWidget {
@@ -12,54 +13,95 @@ class ChatbotScreen extends StatefulWidget {
 class _ChatbotScreenState extends State<ChatbotScreen> {
   final TextEditingController _controller = TextEditingController();
   final List<Map<String, String>> _messages = [];
-  final DialogflowService _dialogflow = DialogflowService();
   final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _autoStartConversation(); // << يبدأ المحادثة أول ما تفتح الصفحة
-  }
+    
 
-  void _autoStartConversation() async {
-    // نرسل trigger message للـ Dialogflow (غالبًا Intent الترحيب يشتغل مع "hi")
-    final botReply = await _dialogflow.sendMessage("hi");
+  _messages.add({
+    "sender": "bot",
+    "text": "Hi 👋 I'm the Saifi Assistant. How can I help you today?You can ask me to help you add a child, book an activity, track your bookings, kids information or about us.",
+  });
+}
+
+  
+
+  
+
+  
+Future<void> _sendMessage() async {
+  final text = _controller.text.trim();
+  if (text.isEmpty) return;
+
+  setState(() {
+    _messages.add({
+      "sender": "user",
+      "text": text,
+    });
+  });
+
+  _controller.clear();
+  _scrollToBottom();
+
+  try {
+    final res = await ApiService.sendChatbotMessage(
+      text: text,
+      lang: "en",
+    );
+
+    final reply = res["reply"] ?? "Sorry, I didn’t quite understand that. Could you clarify?";
+
+    final intent = res["intent"];
 
     setState(() {
-      _messages.add({"role": "bot", "text": botReply});
+      _messages.add({
+        "sender": "bot",
+        "text": reply,
+      });
     });
 
     _scrollToBottom();
-  }
 
-  void _sendMessage() async {
-    if (_controller.text.trim().isEmpty) return;
+    // Action mapping (بسيط الآن)
+ if (intent == "add_child") {
+  Navigator.push(
+    context,
+    MaterialPageRoute(builder: (_) => AddChildScreen()),
+  );
+}
+if (intent == "book_activity") {
+  Navigator.pushNamed(context, "/browseActivities");
+}
+if (intent == "track_my_booking") {
+  Navigator.pushNamed(context, "/bookings");
+}
+if (intent == "kids_information") {
+  Navigator.pushNamed(context, "/kidsInfo");
+}
 
-    String userMessage = _controller.text.trim();
-    _controller.clear();
 
+  } catch (e) {
     setState(() {
-      _messages.add({"role": "user", "text": userMessage});
+      _messages.add({
+        "sender": "bot",
+        "text": "Something went wrong. Please try again 🙏",
+
+      });
     });
-
-    _scrollToBottom();
-
-    final botReply = await _dialogflow.sendMessage(userMessage);
-
-    setState(() {
-      _messages.add({"role": "bot", "text": botReply});
-    });
-
-    _scrollToBottom();
   }
+}
 
   void _scrollToBottom() {
     Future.delayed(const Duration(milliseconds: 200), () {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent + 100,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent + 100,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
     });
   }
 
@@ -71,7 +113,6 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              // رأس بسيط بدون AppBar، فيه لوقو أو عنوان صغير
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12.0),
                 child: Text(
@@ -85,23 +126,26 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                 ),
               ),
 
-              // المحادثة
               Expanded(
                 child: ListView.builder(
                   controller: _scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   itemCount: _messages.length,
                   itemBuilder: (context, index) {
                     final msg = _messages[index];
-                    final isUser = msg["role"] == "user";
+                    final isUser = msg["sender"] == "user";
 
                     return Align(
-                      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                      alignment: isUser
+                          ? Alignment.centerRight
+                          : Alignment.centerLeft,
                       child: Container(
                         margin: const EdgeInsets.symmetric(vertical: 6),
                         padding: const EdgeInsets.all(12),
                         constraints: BoxConstraints(
-                          maxWidth: MediaQuery.of(context).size.width * 0.75,
+                          maxWidth:
+                              MediaQuery.of(context).size.width * 0.75,
                         ),
                         decoration: BoxDecoration(
                           color: isUser
@@ -129,7 +173,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                           msg["text"]!,
                           style: TextStyle(
                             fontFamily: 'RobotoMono',
-                            color: isUser ? Colors.white : AppColors.textDark,
+                            color:
+                                isUser ? Colors.white : AppColors.textDark,
                             fontSize: 15,
                             height: 1.4,
                           ),
@@ -140,10 +185,9 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                 ),
               ),
 
-              // حقل الإدخال
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10.0, vertical: 8.0),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.95),
                   boxShadow: [
@@ -167,18 +211,20 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                           ),
                           filled: true,
                           fillColor: Colors.white,
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 18, vertical: 10),
+                          contentPadding:
+                              const EdgeInsets.symmetric(
+                                  horizontal: 18, vertical: 10),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(24),
                             borderSide: BorderSide(
-                              color: AppColors.primary.withOpacity(0.3),
+                              color:
+                                  AppColors.primary.withOpacity(0.3),
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(24),
-                            borderSide:
-                                const BorderSide(color: AppColors.primary),
+                            borderSide: const BorderSide(
+                                color: AppColors.primary),
                           ),
                         ),
                         onSubmitted: (_) => _sendMessage(),
@@ -188,10 +234,13 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                     GestureDetector(
                       onTap: _sendMessage,
                       child: Container(
-                        decoration: BoxDecoration(
+                        decoration: const BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: const LinearGradient(
-                            colors: [AppColors.primary, Color(0xFF64AFAA)],
+                          gradient: LinearGradient(
+                            colors: [
+                              AppColors.primary,
+                              Color(0xFF64AFAA)
+                            ],
                           ),
                         ),
                         padding: const EdgeInsets.all(10),

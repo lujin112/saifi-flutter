@@ -10,14 +10,18 @@ import 'provider_profile_page.dart';
 class ActivityWelcomeScreen extends StatefulWidget {
   final Map<String, dynamic> activity;
 
-  const ActivityWelcomeScreen({super.key, required this.activity});
+  const ActivityWelcomeScreen({
+    super.key,
+    required this.activity,
+  });
 
   @override
-  State<ActivityWelcomeScreen> createState() => _ActivityWelcomeScreenState();
+  State<ActivityWelcomeScreen> createState() =>
+      _ActivityWelcomeScreenState();
 }
-
 class _ActivityWelcomeScreenState extends State<ActivityWelcomeScreen> {
   String providerName = "Provider";
+  String loggedProviderId = "";
 
   @override
   void initState() {
@@ -29,6 +33,7 @@ class _ActivityWelcomeScreenState extends State<ActivityWelcomeScreen> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       providerName = prefs.getString("provider_name") ?? "Provider";
+      loggedProviderId = prefs.getString("provider_id") ?? "";
     });
   }
 
@@ -135,8 +140,7 @@ appBar: AppBar(
                         fontWeight: FontWeight.w700,
                         fontSize: 22,
                         color: AppColors.primary,
-                      ),
-                    ),
+                      ),),
                     const SizedBox(height: 8),
                     const Text(
                       "Manage your activities easily.",
@@ -193,14 +197,14 @@ appBar: AppBar(
                       icon: Icons.event_available,
                       label: "Bookings",
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ProviderBookingsPage(
-                              activityId: activityId,
-                            ),
+                       Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ProviderBookingsPage(
+                            providerId: loggedProviderId,
                           ),
-                        );
+                        ),
+                      );
                       },
                     ),
                   ],

@@ -52,7 +52,6 @@ class AppTheme {
       fontFamily: AppTextStyles.bodyFont,
       scaffoldBackgroundColor: Colors.transparent,
       primaryColor: AppColors.primary,
-
       appBarTheme: const AppBarTheme(
         elevation: 0,
         backgroundColor: AppColors.primary,
@@ -65,13 +64,11 @@ class AppTheme {
           fontFamily: AppTextStyles.headingFont,
         ),
       ),
-
       textTheme: const TextTheme(
         bodyLarge: AppTextStyles.body,
         bodyMedium: AppTextStyles.body,
         bodySmall: AppTextStyles.small,
       ),
-
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ButtonStyle(
           minimumSize: WidgetStateProperty.all(const Size(double.infinity, 50)),
@@ -92,7 +89,6 @@ class AppTheme {
           foregroundColor: WidgetStateProperty.all(AppColors.white),
         ),
       ),
-
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.white,
@@ -190,7 +186,8 @@ class ShinyButton extends StatelessWidget {
   const ShinyButton({
     super.key,
     required this.text,
-    required this.onPressed, SizedBox? child,
+    required this.onPressed,
+    SizedBox? child,
   });
 
   @override

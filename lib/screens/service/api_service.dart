@@ -290,7 +290,8 @@ class ApiService {
 
   // =========================
   // ✅ update Activity
-  // =========================
+  // ========================
+
   static Future<void> updateActivity({
     required String activityId,
     required Map<String, dynamic> data,
@@ -437,192 +438,56 @@ class ApiService {
     }
 
     final decoded = jsonDecode(res.body);
-
-    // ✅ لو راجع مباشر
-    if (decoded is Map<String, dynamic> && decoded.containsKey("provider_id")) {
-      return decoded;
-    }
-
-    // ✅ لو داخل data
-    if (decoded is Map && decoded["data"] != null && decoded["data"] is Map) {
-      return Map<String, dynamic>.from(decoded["data"]);
-    }
-
-    throw Exception("Invalid provider response format");
+    return Map<String, dynamic>.from(decoded);
   }
 
+//======================
+//Bookings By Provider (CORRECT)
 // =========================
-// ✅ Update Child (FULL UPDATE)
-// =========================
-  static Future<void> updateChild({
-    required String childId,
-    required Map<String, dynamic> data,
-  }) async {
-    final url = Uri.parse("$baseUrl/children/$childId");
+  static Future<List<Map<String, dynamic>>> getBookingsByProvider(
+    String providerId,
+  ) async {
+    final url = Uri.parse("$baseUrl/bookings/provider/$providerId");
 
-    final response = await http.put(
+    print("🔗 BOOKINGS BY PROVIDER 👉 $url");
+
+    final response = await http.get(
+      url,
+      headers: {"Content-Type": "application/json"},
+    );
+
+    print("🟢 STATUS 👉 ${response.statusCode}");
+    print("🟢 BODY 👉 ${response.body}");
+
+    if (response.statusCode != 200) {
+      throw Exception("Failed to load provider bookings");
+    }
+
+    final decoded = jsonDecode(response.body);
+
+    if (decoded is List) {
+      return List<Map<String, dynamic>>.from(decoded);
+    }
+
+    if (decoded is Map && decoded["data"] is List) {
+      return List<Map<String, dynamic>>.from(decoded["data"]);
+    }
+
+    return [];
+  }
+
+  static Future<void> createFeedback(Map<String, dynamic> data) async {
+    final url = Uri.parse("$baseUrl/feedback");
+
+    final response = await http.post(
       url,
       headers: {"Content-Type": "application/json"},
       body: jsonEncode(data),
     );
 
-    print("🟡 UPDATE CHILD STATUS: ${response.statusCode}");
-    print("🟡 UPDATE CHILD BODY: ${response.body}");
-
-    if (response.statusCode != 200) {
-      throw Exception("Failed to update child: ${response.body}");
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception("Failed to submit feedback: ${response.body}");
     }
-  }
-
-  // =========================
-  // ✅ Get Parent By ID
-  // =========================
-  static Future<Map<String, dynamic>> getParentById(String parentId) async {
-    final url = Uri.parse("$baseUrl/parents/$parentId");
-
-    final response = await http.get(url);
-
-    if (response.statusCode != 200) {
-      throw Exception("Failed to load parent: ${response.body}");
-    }
-
-    final decoded = jsonDecode(response.body);
-
-    // ✅ لو داخل data
-    if (decoded is Map && decoded["data"] != null) {
-      return Map<String, dynamic>.from(decoded["data"]);
-    }
-
-    // ✅ لو راجع مباشر
-    if (decoded is Map) {
-      return Map<String, dynamic>.from(decoded);
-    }
-
-    // ✅ لو راجع List (أسوأ سيناريو)
-    if (decoded is List && decoded.isNotEmpty) {
-      return Map<String, dynamic>.from(decoded.first);
-    }
-
-    throw Exception("Invalid parent response format");
-  }
-
-  // =========================
-  // ✅ Update Parent
-  // =========================
-  static Future<void> updateParent({
-    required String parentId,
-    required String firstName,
-    required String lastName,
-    required String phone,
-  }) async {
-    final url = Uri.parse("$baseUrl/parents/$parentId");
-
-    final response = await http.put(
-      url,
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "first_name": firstName,
-        "last_name": lastName,
-        "phone": phone,
-      }),
-    );
-
-    if (response.statusCode != 200) {
-      throw Exception("Failed to update parent");
-    }
-  }
-
-  // =========================
-  // ✅ Update Parent Location
-  // =========================
-  static Future<void> updateParentLocation({
-    required String parentId,
-    required double lat,
-    required double lng,
-  }) async {
-    final url = Uri.parse("$baseUrl/parents/update-location");
-
-    final response = await http.put(
-      url,
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "parent_id": parentId,
-        "location_lat": lat,
-        "location_lng": lng,
-      }),
-    );
-
-    if (response.statusCode != 200) {
-      throw Exception("Failed to update location");
-    }
-  }
-
-// =========================
-// ✅ Get Provider Activities
-// =========================
-  static Future<List<Map<String, dynamic>>> getProviderActivities(
-    String providerId,
-  ) async {
-    final url = Uri.parse("$baseUrl/activities/by-provider/$providerId");
-
-    print("🔗 URL 👉 $url");
-
-    final response = await http.get(
-      url,
-      headers: {"Content-Type": "application/json"},
-    );
-
-    print("🟥 STATUS 👉 ${response.statusCode}");
-    print("🟥 BODY 👉 ${response.body}");
-
-    if (response.statusCode != 200) {
-      throw Exception(
-          "Failed to load provider activities | ${response.statusCode}");
-    }
-
-    final decoded = jsonDecode(response.body);
-
-    if (decoded is Map && decoded["data"] != null) {
-      return List<Map<String, dynamic>>.from(decoded["data"]);
-    }
-
-    if (decoded is List) {
-      return List<Map<String, dynamic>>.from(decoded);
-    }
-
-    return [];
-  }
-
-// =========================
-// ✅ Get Bookings By Activity (Provider)
-// =========================
-  static Future<List<Map<String, dynamic>>> getBookingsByActivity({
-    required String activityId,
-  }) async {
-    final url = Uri.parse("$baseUrl/bookings/activity/$activityId");
-
-    final response = await http.get(
-      url,
-      headers: {"Content-Type": "application/json"},
-    );
-
-    if (response.statusCode != 200) {
-      throw Exception("Failed to load bookings");
-    }
-
-    final decoded = jsonDecode(response.body);
-
-    // لو الباك يرجع List مباشرة
-    if (decoded is List) {
-      return List<Map<String, dynamic>>.from(decoded);
-    }
-
-    // لو ملفوفة داخل data
-    if (decoded["data"] != null) {
-      return List<Map<String, dynamic>>.from(decoded["data"]);
-    }
-
-    return [];
   }
 
 // =========================
@@ -713,4 +578,130 @@ class ApiService {
 
     return jsonDecode(response.body);
   }
+
+  
+
+static Future<Map<String, dynamic>> sendChatbotMessage({
+  required String text,
+  required String lang,
+}) async {
+  final response = await http.post(
+    Uri.parse("$baseUrl/chatbot/message"),
+    headers: {"Content-Type": "application/json"},
+    body: jsonEncode({
+      "text": text,
+      "lang": lang,
+    }),
+  );
+
+  return jsonDecode(response.body);
+}
+
+  static Future<void> updateParentLocation({
+    required String parentId,
+    required double lat,
+    required double lng,
+  }) async {
+    final url = Uri.parse("$baseUrl/parents/$parentId/location");
+
+    final response = await http.put(
+      url,
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "location_lat": lat,
+        "location_lng": lng,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception("Failed to update parent location: ${response.body}");
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getProviderActivities(
+    String providerId,
+  ) async {
+    final url = Uri.parse("$baseUrl/activities/by-provider/$providerId");
+
+    final response = await http.get(url);
+
+    if (response.statusCode != 200) {
+      throw Exception("Failed to load provider activities");
+    }
+
+    final decoded = jsonDecode(response.body);
+
+    if (decoded is Map && decoded["data"] != null) {
+      return List<Map<String, dynamic>>.from(decoded["data"]);
+    }
+
+    if (decoded is List) {
+      return List<Map<String, dynamic>>.from(decoded);
+    }
+
+    return [];
+  }
+
+  static Future<void> updateChild({
+    required String childId,
+    required Map<String, dynamic> data,
+  }) async {
+    final url = Uri.parse("$baseUrl/children/$childId");
+
+    final response = await http.put(
+      url,
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(data),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception("Failed to update child: ${response.body}");
+    }
+  }
+
+  static Future<void> updateParent({
+    required String parentId,
+    required String firstName,
+    required String lastName,
+    required String phone,
+  }) async {
+    final url = Uri.parse("$baseUrl/parents/$parentId");
+
+    final response = await http.put(
+      url,
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "first_name": firstName,
+        "last_name": lastName,
+        "phone": phone,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception("Failed to update parent: ${response.body}");
+    }
+  }
+
+  static Future<Map<String, dynamic>> getParentById(
+    String parentId,
+  ) async {
+    final url = Uri.parse("$baseUrl/parents/$parentId");
+
+    final response = await http.get(url);
+
+    if (response.statusCode != 200) {
+      throw Exception("Failed to fetch parent: ${response.body}");
+    }
+
+    final decoded = jsonDecode(response.body);
+
+    if (decoded is Map && decoded["data"] != null) {
+      return Map<String, dynamic>.from(decoded["data"]);
+    }
+
+    return Map<String, dynamic>.from(decoded);
+  }
+  
+ 
+
 }
