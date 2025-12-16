@@ -11,8 +11,7 @@ class ProviderBookingsPage extends StatefulWidget {
   });
 
   @override
-  State<ProviderBookingsPage> createState() =>
-      _ProviderBookingsPageState();
+  State<ProviderBookingsPage> createState() => _ProviderBookingsPageState();
 }
 
 class _ProviderBookingsPageState extends State<ProviderBookingsPage> {
@@ -24,28 +23,27 @@ class _ProviderBookingsPageState extends State<ProviderBookingsPage> {
     _loadBookings();
   }
 
-void _loadBookings() {
-  _bookingsFuture =
-      ApiService.getBookingsByActivity(activityId: widget.activityId);
-}
-
-Future<void> _updateStatus(String bookingId, String status) async {
-  try {
-    await ApiService.updateBookingStatus(
-      bookingId: bookingId,
-      status: status,
-    );
-
-    setState(() {
-      _loadBookings();
-    });
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Update failed: $e")),
-    );
+  void _loadBookings() {
+    _bookingsFuture =
+        ApiService.getBookingsByActivity(activityId: widget.activityId);
   }
-}
 
+  Future<void> _updateStatus(String bookingId, String status) async {
+    try {
+      await ApiService.updateBookingStatus(
+        bookingId: bookingId,
+        status: status,
+      );
+
+      setState(() {
+        _loadBookings();
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Update failed: $e")),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -68,8 +66,7 @@ Future<void> _updateStatus(String bookingId, String status) async {
           builder: (context, snapshot) {
             if (!snapshot.hasData) {
               return const Center(
-                child:
-                    CircularProgressIndicator(color: Colors.white),
+                child: CircularProgressIndicator(color: Colors.white),
               );
             }
 
@@ -94,12 +91,10 @@ Future<void> _updateStatus(String bookingId, String status) async {
               itemBuilder: (context, index) {
                 final data = bookings[index];
                 final bookingId = data["booking_id"];
-                final status =
-                    (data['status'] ?? "pending").toString();
+                final status = (data['status'] ?? "pending").toString();
 
                 final bool isFinal =
-                    status == "approved" ||
-                        status == "rejected";
+                    status == "approved" || status == "rejected";
 
                 return Container(
                   margin: const EdgeInsets.only(bottom: 16),
@@ -109,31 +104,24 @@ Future<void> _updateStatus(String bookingId, String status) async {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color:
-                            Colors.black26.withOpacity(.08),
+                        color: Colors.black26.withOpacity(.08),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
                     ],
                   ),
                   child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        data['child_name'] ??
-                            "Unknown Child",
+                        data['child_name'] ?? "Unknown Child",
                         style: const TextStyle(
                           fontFamily: 'RobotoMono',
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-
-                      
-
                       const SizedBox(height: 5),
-
                       Text(
                         "Gender: ${data["child_gender"] ?? "-"}",
                         style: const TextStyle(
@@ -141,9 +129,7 @@ Future<void> _updateStatus(String bookingId, String status) async {
                           fontSize: 14,
                         ),
                       ),
-
                       const SizedBox(height: 5),
-
                       Text(
                         "Status: $status",
                         style: TextStyle(
@@ -157,17 +143,13 @@ Future<void> _updateStatus(String bookingId, String status) async {
                                   : Colors.orange,
                         ),
                       ),
-
                       const SizedBox(height: 15),
-
                       Row(
                         children: [
                           Expanded(
                             child: ElevatedButton(
-                              style:
-                                  ElevatedButton.styleFrom(
-                                backgroundColor:
-                                    Colors.green,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
                               ),
                               onPressed: isFinal
                                   ? null
@@ -178,23 +160,17 @@ Future<void> _updateStatus(String bookingId, String status) async {
                               child: const Text(
                                 "Approve",
                                 style: TextStyle(
-                                  fontFamily:
-                                      'RobotoMono',
-                                  fontWeight:
-                                      FontWeight.bold,
+                                  fontFamily: 'RobotoMono',
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
                           ),
-
                           const SizedBox(width: 12),
-
                           Expanded(
                             child: ElevatedButton(
-                              style:
-                                  ElevatedButton.styleFrom(
-                                backgroundColor:
-                                    Colors.redAccent,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.redAccent,
                               ),
                               onPressed: isFinal
                                   ? null
@@ -205,10 +181,8 @@ Future<void> _updateStatus(String bookingId, String status) async {
                               child: const Text(
                                 "Reject",
                                 style: TextStyle(
-                                  fontFamily:
-                                      'RobotoMono',
-                                  fontWeight:
-                                      FontWeight.bold,
+                                  fontFamily: 'RobotoMono',
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),

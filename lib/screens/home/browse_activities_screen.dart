@@ -22,8 +22,11 @@ class _BrowseActivitiesScreenState
 
   final TextEditingController _searchController = TextEditingController();
   List<Map<String, dynamic>> _allActivities = [];
+  List<Map<String, dynamic>> _baseActivities = [];
   List<Map<String, dynamic>> _filteredActivities = [];
 
+  
+  
   @override
   void initState() {
     super.initState();
@@ -86,17 +89,18 @@ class _BrowseActivitiesScreenState
 
     setState(() {
       if (query.isEmpty) {
-        _filteredActivities = List.from(_allActivities);
-      } else {
-        _filteredActivities = _allActivities.where((a) {
-          final title =
-              (a["title"] ?? "").toString().toLowerCase();
-          final description =
-              (a["description"] ?? "").toString().toLowerCase();
-          return title.contains(query) ||
-              description.contains(query);
-        }).toList();
-      }
+  _filteredActivities = List.from(_baseActivities);
+} else {
+  _filteredActivities = _baseActivities.where((a) {
+    final title =
+        (a["title"] ?? "").toString().toLowerCase();
+    final description =
+        (a["description"] ?? "").toString().toLowerCase();
+    return title.contains(query) ||
+        description.contains(query);
+  }).toList();
+}
+
     });
   }
 
@@ -143,11 +147,12 @@ class _BrowseActivitiesScreenState
               );
             }
 
-            if (snapshot.hasData && _allActivities.isEmpty) {
+           if (snapshot.hasData && _allActivities.isEmpty) {
               _allActivities = snapshot.data!;
-              _filteredActivities =
-                  List.from(_allActivities);
-            }
+              _baseActivities = List.from(_allActivities);
+              _filteredActivities = List.from(_allActivities);
+              }
+
 
             return SingleChildScrollView(
               padding: const EdgeInsets.all(20),
@@ -256,10 +261,10 @@ class _BrowseActivitiesScreenState
                         ),
                       ),
                       IconButton(
-                        onPressed: () {},
-                        icon: const Icon(
-                            Icons.filter_list),
-                      )
+                          onPressed: _openFilterSheet,
+                          icon: const Icon(Icons.filter_list),
+                        )
+
                     ],
                   ),
 
@@ -446,4 +451,235 @@ class _BrowseActivitiesScreenState
       ),
     );
   }
+
+  void _openFilterSheet() {
+  showModalBottomSheet(
+    context: context,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (_) {
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: const Text("Filter by Age"),
+              onTap: () {
+  Navigator.pop(context);
+  _filterByAge();
+},
+
+            ),
+            ListTile(
+              title: const Text("Filter by Gender"),
+             
+              onTap: () {
+  Navigator.pop(context);
+  _filterByGender();
+},
+
+            ),
+            ListTile(
+              title: const Text("Filter by Type"),
+              
+              onTap: () {
+ Navigator.pop(context);
+  _filterByType();
+},
+            ),
+            ListTile(
+              title: const Text("Reset Filters"),
+              
+              onTap: () {
+  Navigator.pop(context);
+  _resetFilters();
+},
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+void _filterByAge() {
+  int selectedAge = 10;
+
+  showModalBottomSheet(
+    context: context,
+    builder: (_) {
+      return StatefulBuilder(
+        builder: (context, setModalState) {
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "Select Age: $selectedAge",
+                  style: const TextStyle(
+                    fontFamily: 'RobotoMono',
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Slider(
+                  value: selectedAge.toDouble(),
+                  min: 3,
+                  max: 18,
+                  divisions: 15,
+                  label: selectedAge.toString(),
+                  onChanged: (value) {
+                    setModalState(() {
+                      selectedAge = value.round();
+                    });
+                  },
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    setState(() {
+                      _filteredActivities = _baseActivities.where((a) {
+                        final minAge =
+    int.tryParse(a["age_from"]?.toString() ?? "") ?? 0;
+
+final maxAge =
+    int.tryParse(a["age_to"]?.toString() ?? "") ?? 99;
+
+                        return selectedAge >= minAge &&
+                            selectedAge <= maxAge;
+                      }).toList();
+                    });
+                  },
+                  child: const Text("Apply"),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
+void _filterByGender() {
+  String selectedGender = "male";
+
+  showModalBottomSheet(
+    context: context,
+    builder: (_) {
+      return StatefulBuilder(
+        builder: (context, setModalState) {
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  "Select Gender",
+                  style: TextStyle(
+                    fontFamily: 'RobotoMono',
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                RadioListTile<String>(
+                  title: const Text("Male"),
+                  value: "male",
+                  groupValue: selectedGender,
+                  onChanged: (value) {
+                    setModalState(() {
+                      selectedGender = value!;
+                    });
+                  },
+                ),
+                RadioListTile<String>(
+                  title: const Text("Female"),
+                  value: "female",
+                  groupValue: selectedGender,
+                  onChanged: (value) {
+                    setModalState(() {
+                      selectedGender = value!;
+                    });
+                  },
+                ),
+                RadioListTile<String>(
+                  title: const Text("Both"),
+                  value: "both",
+                  groupValue: selectedGender,
+                  onChanged: (value) {
+                    setModalState(() {
+                      selectedGender = value!;
+                    });
+                  },
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    setState(() {
+                      _filteredActivities = _baseActivities.where((a) {
+                        final gender =
+                            (a["gender"] ?? "").toString().toLowerCase();
+                        return gender == selectedGender ||
+                            gender == "both";
+                      }).toList();
+                    });
+                  },
+                  child: const Text("Apply"),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
+List<String> _getAvailableTypes() {
+  return _baseActivities
+      .map((a) => a["type"])
+      .where((t) => t != null && t.toString().isNotEmpty)
+      .map((t) => t.toString())
+      .toSet()
+      .toList();
+}
+void _filterByType() {
+  
+
+  final types = _getAvailableTypes();
+
+  showModalBottomSheet(
+    context: context,
+    builder: (_) {
+      return ListView.builder(
+        itemCount: types.length,
+        itemBuilder: (_, index) {
+          return ListTile(
+            title: Text(types[index]),
+            onTap: () {
+              Navigator.pop(context);
+              _applyTypeFilter(types[index]);
+            },
+          );
+        },
+      );
+    },
+  );
+}
+void _applyTypeFilter(String selectedType) {
+  setState(() {
+    _filteredActivities = _baseActivities
+        .where((a) => a["type"] == selectedType)
+        .toList();
+  });
+}
+
+void _resetFilters() {
+  
+  setState(() {
+    _filteredActivities = List.from(_baseActivities);
+  });
+}
+
+
 }

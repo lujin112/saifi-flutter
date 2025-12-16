@@ -332,7 +332,6 @@ class ApiService {
     required String childId,
     required String activityId,
     required String providerId,
-    required String status,
     required String bookingDate,
     String? startDate,
     String? endDate,
@@ -349,7 +348,6 @@ class ApiService {
         "child_id": childId,
         "activity_id": activityId,
         "provider_id": providerId,
-        "status": status,
         "booking_date": bookingDate,
         "start_date": startDate,
         "end_date": endDate,
@@ -562,39 +560,38 @@ class ApiService {
 // =========================
 // ✅ Get Provider Activities
 // =========================
-static Future<List<Map<String, dynamic>>> getProviderActivities(
-  String providerId,
-) async {
-  final url = Uri.parse("$baseUrl/activities/by-provider/$providerId");
+  static Future<List<Map<String, dynamic>>> getProviderActivities(
+    String providerId,
+  ) async {
+    final url = Uri.parse("$baseUrl/activities/by-provider/$providerId");
 
-  print("🔗 URL 👉 $url");
+    print("🔗 URL 👉 $url");
 
-  final response = await http.get(
-    url,
-    headers: {"Content-Type": "application/json"},
-  );
+    final response = await http.get(
+      url,
+      headers: {"Content-Type": "application/json"},
+    );
 
-  print("🟥 STATUS 👉 ${response.statusCode}");
-  print("🟥 BODY 👉 ${response.body}");
+    print("🟥 STATUS 👉 ${response.statusCode}");
+    print("🟥 BODY 👉 ${response.body}");
 
-  if (response.statusCode != 200) {
-    throw Exception(
-        "Failed to load provider activities | ${response.statusCode}");
+    if (response.statusCode != 200) {
+      throw Exception(
+          "Failed to load provider activities | ${response.statusCode}");
+    }
+
+    final decoded = jsonDecode(response.body);
+
+    if (decoded is Map && decoded["data"] != null) {
+      return List<Map<String, dynamic>>.from(decoded["data"]);
+    }
+
+    if (decoded is List) {
+      return List<Map<String, dynamic>>.from(decoded);
+    }
+
+    return [];
   }
-
-  final decoded = jsonDecode(response.body);
-
-  if (decoded is Map && decoded["data"] != null) {
-    return List<Map<String, dynamic>>.from(decoded["data"]);
-  }
-
-  if (decoded is List) {
-    return List<Map<String, dynamic>>.from(decoded);
-  }
-
-  return [];
-}
-
 
 // =========================
 // ✅ Get Bookings By Activity (Provider)
@@ -602,7 +599,7 @@ static Future<List<Map<String, dynamic>>> getProviderActivities(
   static Future<List<Map<String, dynamic>>> getBookingsByActivity({
     required String activityId,
   }) async {
-    final url = Uri.parse("$baseUrl/bookings/by-activity/$activityId");
+    final url = Uri.parse("$baseUrl/bookings/activity/$activityId");
 
     final response = await http.get(
       url,

@@ -53,8 +53,7 @@ class ActivityDetailsPage extends StatelessWidget {
     final bool rawStatus = activity['status'] ?? true;
     final String status = rawStatus ? "active" : "inactive";
 
-    final String providerId =
-        activity['provider_id']?.toString() ?? "";
+    final String providerId = activity['provider_id']?.toString() ?? "";
 
     final int? capacity = activity['capacity'];
     final int? duration = activity['duration'];
@@ -63,11 +62,9 @@ class ActivityDetailsPage extends StatelessWidget {
     final int minAge = activity["age_from"] ?? 0;
     final int maxAge = activity["age_to"] ?? 99;
 
-    final String activityGender =
-        activity["gender"] ?? "both";
+    final String activityGender = activity["gender"] ?? "both";
 
-    final String activityId =
-        activity["activity_id"]?.toString() ?? "";
+    final String activityId = activity["activity_id"]?.toString() ?? "";
 
     final String ageRange = "$minAge - $maxAge";
 
@@ -89,7 +86,6 @@ class ActivityDetailsPage extends StatelessWidget {
           ),
         ),
       ),
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: Column(
@@ -102,36 +98,28 @@ class ActivityDetailsPage extends StatelessWidget {
                 return _buildHeroCard(title, type, status, providerName);
               },
             ),
-
             const SizedBox(height: 20),
-
             Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _smallTag("Age: $ageRange", Icons.group),
-
-              _smallTag(
-                "Gender: ${activityGender.toUpperCase()}",
-                Icons.wc,
-              ),
-
-              if (capacity != null)
-                _smallTag("Capacity: $capacity", Icons.people_alt_rounded),
-
-              if (duration != null)
-                _smallTag("Duration: $duration Hours", Icons.schedule),
-            ],
-          ),
-
-
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _smallTag("Age: $ageRange", Icons.group),
+                _smallTag(
+                  "Gender: ${activityGender.toUpperCase()}",
+                  Icons.wc,
+                ),
+                if (capacity != null)
+                  _smallTag("Capacity: $capacity", Icons.people_alt_rounded),
+                if (duration != null)
+                  _smallTag("Duration: $duration Hours", Icons.schedule),
+              ],
+            ),
             const SizedBox(height: 20),
-
             Row(
               children: [
                 Expanded(
-                  child: _infoCard("Start date", startDate,
-                      Icons.calendar_today_rounded),
+                  child: _infoCard(
+                      "Start date", startDate, Icons.calendar_today_rounded),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -139,14 +127,12 @@ class ActivityDetailsPage extends StatelessWidget {
                 ),
               ],
             ),
-
             const SizedBox(height: 12),
-
             Row(
               children: [
                 Expanded(
-                  child: _infoCard(
-                      "Price", price != null ? "$price SAR" : "-", Icons.payments),
+                  child: _infoCard("Price", price != null ? "$price SAR" : "-",
+                      Icons.payments),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -154,9 +140,7 @@ class ActivityDetailsPage extends StatelessWidget {
                 ),
               ],
             ),
-
             const SizedBox(height: 24),
-
             const Text(
               "About this activity",
               style: TextStyle(
@@ -165,12 +149,9 @@ class ActivityDetailsPage extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
-
             const SizedBox(height: 10),
             _buildDescription(description),
-
             const SizedBox(height: 24),
-
             const Text(
               "Location",
               style: TextStyle(
@@ -179,9 +160,7 @@ class ActivityDetailsPage extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
-
             const SizedBox(height: 12),
-
             FutureBuilder<Map<String, double>?>(
               future: _getProviderLocation(providerId),
               builder: (context, snapshot) {
@@ -201,8 +180,7 @@ class ActivityDetailsPage extends StatelessWidget {
                 }
 
                 final loc = snapshot.data!;
-                final LatLng position =
-                    LatLng(loc["lat"]!, loc["lng"]!);
+                final LatLng position = LatLng(loc["lat"]!, loc["lng"]!);
 
                 return Container(
                   height: 220,
@@ -233,9 +211,7 @@ class ActivityDetailsPage extends StatelessWidget {
                 );
               },
             ),
-
             const SizedBox(height: 30),
-
             _buildBookButton(
                 context, activityId, minAge, maxAge, activityGender),
           ],
@@ -272,13 +248,11 @@ class ActivityDetailsPage extends StatelessWidget {
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
-          padding:
-              const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
         ),
-
         onPressed: () {
           Navigator.push(
             context,
@@ -287,7 +261,6 @@ class ActivityDetailsPage extends StatelessWidget {
             ),
           );
         },
-
         child: const Text(
           "Book Now",
           style: TextStyle(
@@ -303,10 +276,7 @@ class ActivityDetailsPage extends StatelessWidget {
 
   // ---------------------------------------------------
   Widget _buildHeroCard(
-      String title,
-      String type,
-      String status,
-      String providerName) {
+      String title, String type, String status, String providerName) {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -356,13 +326,11 @@ class ActivityDetailsPage extends StatelessWidget {
 
   Widget _smallTag(String text, IconData icon) {
     return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border:
-            Border.all(color: AppColors.primary.withOpacity(0.18)),
+        border: Border.all(color: AppColors.primary.withOpacity(0.18)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

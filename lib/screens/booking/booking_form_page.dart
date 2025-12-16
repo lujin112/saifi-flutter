@@ -45,18 +45,15 @@ class _BookingFormPageState extends State<BookingFormPage> {
         return;
       }
 
-      final children = await ApiService
-          .getChildrenByParent(parentId)
+      final children = await ApiService.getChildrenByParent(parentId)
           .timeout(const Duration(seconds: 10));
-
 
       final activityGender =
           (widget.activity["gender"] ?? "both").toString().toLowerCase();
 
       final filtered = children.where((c) {
         final gender = (c["gender"] ?? "").toString().toLowerCase();
-        final genderOk =
-            activityGender == "both" || gender == activityGender;
+        final genderOk = activityGender == "both" || gender == activityGender;
 
         return genderOk;
       }).toList();
@@ -105,7 +102,6 @@ class _BookingFormPageState extends State<BookingFormPage> {
         childId: _selectedChild!["child_id"].toString(),
         activityId: widget.activity["activity_id"].toString(),
         providerId: widget.activity["provider_id"].toString(),
-        status: "pending",
         bookingDate: DateTime.now().toIso8601String(),
         startDate: _startDate!.toIso8601String().substring(0, 10),
         endDate: _endDate!.toIso8601String().substring(0, 10),
@@ -116,40 +112,39 @@ class _BookingFormPageState extends State<BookingFormPage> {
 
       setState(() => _loading = false);
 
-showDialog(
-  context: context,
-  builder: (_) => AlertDialog(
-    title: const Text("Booking Submitted"),
-    content: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: const [
-        Icon(
-          Icons.check_circle,
-          color: Colors.green,
-          size: 64,
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text("Booking Submitted"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              Icon(
+                Icons.check_circle,
+                color: Colors.green,
+                size: 64,
+              ),
+              SizedBox(height: 14),
+              Text(
+                "Please visit the center to complete the payment process.",
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const BookingScreen()),
+                );
+              },
+              child: const Text("OK"),
+            )
+          ],
         ),
-        SizedBox(height: 14),
-        Text(
-          "Please visit the center to complete the payment process.",
-          textAlign: TextAlign.center,
-        ),
-      ],
-    ),
-    actions: [
-      TextButton(
-        onPressed: () {
-          Navigator.pop(context);
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const BookingScreen()),
-          );
-        },
-        child: const Text("OK"),
-      )
-    ],
-  ),
-);
-
+      );
     } catch (e) {
       setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -169,12 +164,10 @@ showDialog(
         backgroundColor: AppColors.primary,
         title: const Text("Booking"),
       ),
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-
             // ✅ Activity Card WITH ICON
             Container(
               padding: const EdgeInsets.all(16),
@@ -220,8 +213,7 @@ showDialog(
               alignment: Alignment.centerLeft,
               child: Row(
                 children: [
-                  Icon(Icons.child_care,
-                      color: AppColors.primary, size: 22),
+                  Icon(Icons.child_care, color: AppColors.primary, size: 22),
                   SizedBox(width: 8),
                   Text(
                     "Select Child",
@@ -255,8 +247,7 @@ showDialog(
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color:
-                            selected ? AppColors.primary : Colors.white,
+                        color: selected ? AppColors.primary : Colors.white,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color: selected
@@ -273,8 +264,7 @@ showDialog(
                             child: Text(
                               "${c["first_name"]} ${c["last_name"]}",
                               style: TextStyle(
-                                color:
-                                    selected ? Colors.white : Colors.black,
+                                color: selected ? Colors.white : Colors.black,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -288,12 +278,10 @@ showDialog(
 
             if (_selectedChild != null) ...[
               const SizedBox(height: 20),
-
               const Text(
                 "Do you want to tell us something about your child?",
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
-
               Row(
                 children: [
                   Expanded(
@@ -318,7 +306,6 @@ showDialog(
                   ),
                 ],
               ),
-
               if (_showNotes)
                 TextField(
                   controller: _notesController,
@@ -328,9 +315,7 @@ showDialog(
                     border: OutlineInputBorder(),
                   ),
                 ),
-
               const SizedBox(height: 20),
-
               Row(
                 children: [
                   Expanded(
@@ -376,9 +361,7 @@ showDialog(
                   ),
                 ],
               ),
-
               const SizedBox(height: 30),
-
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(

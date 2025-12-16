@@ -14,8 +14,9 @@ class BookingScreen extends StatelessWidget {
     final childName = data["child_name"] ?? "Child";
 
     final rawStartDate = data["start_date"]?.toString() ?? "-";
-    final startDate =
-        rawStartDate.length >= 10 ? rawStartDate.substring(0, 10) : rawStartDate;
+    final startDate = rawStartDate.length >= 10
+        ? rawStartDate.substring(0, 10)
+        : rawStartDate;
 
     final rawBookingDate = data["booking_date"]?.toString() ?? "-";
     final bookingDate = rawBookingDate.length >= 10
@@ -38,7 +39,7 @@ class BookingScreen extends StatelessWidget {
 
     String statusText() {
       switch (status) {
-        case "confirmed":
+        case "approved":
           return "ACCEPTED";
         case "rejected":
           return "REJECTED";
@@ -117,8 +118,7 @@ class BookingScreen extends StatelessWidget {
               // ✅ Child
               Row(
                 children: [
-                  Icon(Icons.child_care,
-                      size: 18, color: AppColors.primary),
+                  Icon(Icons.child_care, size: 18, color: AppColors.primary),
                   const SizedBox(width: 6),
                   Text(
                     childName,
@@ -135,14 +135,13 @@ class BookingScreen extends StatelessWidget {
               // ✅ Actions
               Row(
                 children: [
-                  if (status == "confirmed")
+                  if (status == "approved")
                     Expanded(
                       child: OutlinedButton.icon(
                         icon: const Icon(Icons.rate_review),
                         label: const Text("Add Feedback"),
                         onPressed: () {
-                          _showFeedbackSheet(
-                              context, data["activity_id"]);
+                          _showFeedbackSheet(context, data["activity_id"]);
                         },
                       ),
                     ),
@@ -161,13 +160,11 @@ class BookingScreen extends StatelessWidget {
                               "Are you sure you want to delete this booking?"),
                           actions: [
                             TextButton(
-                              onPressed: () =>
-                                  Navigator.pop(context, false),
+                              onPressed: () => Navigator.pop(context, false),
                               child: const Text("Cancel"),
                             ),
                             TextButton(
-                              onPressed: () =>
-                                  Navigator.pop(context, true),
+                              onPressed: () => Navigator.pop(context, true),
                               child: const Text("Delete"),
                             ),
                           ],
@@ -177,8 +174,7 @@ class BookingScreen extends StatelessWidget {
                       if (confirm == true) {
                         await ApiService.deleteBooking(bookingId); // ✅
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text("Booking deleted")),
+                          const SnackBar(content: Text("Booking deleted")),
                         );
                         (context as Element).reassemble(); // refresh
                       }
@@ -194,8 +190,7 @@ class BookingScreen extends StatelessWidget {
             top: 0,
             right: 0,
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: statusColor().withOpacity(0.15),
                 borderRadius: BorderRadius.circular(14),
@@ -237,8 +232,7 @@ class BookingScreen extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text("Rate This Activity",
-                  style:
-                      TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 20),
 
               // rating unchanged...
@@ -251,8 +245,7 @@ class BookingScreen extends StatelessWidget {
                   onPressed: () {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text("Feedback submitted")),
+                      const SnackBar(content: Text("Feedback submitted")),
                     );
                   },
                 ),
@@ -287,7 +280,6 @@ class BookingScreen extends StatelessWidget {
         backgroundColor: AppColors.primary,
         centerTitle: true,
       ),
-
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _loadBookings(),
         builder: (context, snap) {
@@ -303,8 +295,7 @@ class BookingScreen extends StatelessWidget {
                   Icon(Icons.event_busy, size: 60, color: Colors.grey),
                   SizedBox(height: 12),
                   Text("No bookings found.",
-                      style:
-                          TextStyle(fontSize: 18, color: Colors.grey)),
+                      style: TextStyle(fontSize: 18, color: Colors.grey)),
                 ],
               ),
             );

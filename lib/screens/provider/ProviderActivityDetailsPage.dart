@@ -65,8 +65,8 @@ class _ProviderActivityDetailsPageState
       // ✅ لو ما فيه ID → كل أنشطة البروفايدر
       final activities =
           await ApiService.getProviderActivities(loggedProviderId!);
-          print("Activities type: ${activities.runtimeType}");
-          print("Activities value: $activities");
+      print("Activities type: ${activities.runtimeType}");
+      print("Activities value: $activities");
 
       if (activities.isEmpty) {
         setState(() {
@@ -83,14 +83,13 @@ class _ProviderActivityDetailsPageState
         showList = true;
         isLoading = false;
       });
-    }  catch (e) {
-  print("ERROR 👉 $e");
-  setState(() {
-    errorMessage = e.toString();
-    isLoading = false;
-  });
-}
-
+    } catch (e) {
+      print("ERROR 👉 $e");
+      setState(() {
+        errorMessage = e.toString();
+        isLoading = false;
+      });
+    }
   }
 
   @override
@@ -332,289 +331,286 @@ class _ProviderActivityDetailsPageState
 
   // ==========================
   // ✅ نافذة التعديل عندك كما هي
-   // ==========================
-Future<void> _showEditDialog(Map<String, dynamic> a) async {
-  final titleController = TextEditingController(text: a["title"]);
-  final descController = TextEditingController(text: a["description"]);
-  final typeController = TextEditingController(text: a["type"]);
-  final priceController = TextEditingController(text: a["price"]?.toString());
-  final capacityController =
-      TextEditingController(text: a["capacity"]?.toString());
-  final durationController =
-      TextEditingController(text: a["duration"]?.toString());
-  final ageFromController =
-      TextEditingController(text: a["age_from"]?.toString());
-  final ageToController =
-      TextEditingController(text: a["age_to"]?.toString());
+  // ==========================
+  Future<void> _showEditDialog(Map<String, dynamic> a) async {
+    final titleController = TextEditingController(text: a["title"]);
+    final descController = TextEditingController(text: a["description"]);
+    final typeController = TextEditingController(text: a["type"]);
+    final priceController = TextEditingController(text: a["price"]?.toString());
+    final capacityController =
+        TextEditingController(text: a["capacity"]?.toString());
+    final durationController =
+        TextEditingController(text: a["duration"]?.toString());
+    final ageFromController =
+        TextEditingController(text: a["age_from"]?.toString());
+    final ageToController =
+        TextEditingController(text: a["age_to"]?.toString());
 
-  String gender = a["gender"] ?? "male"; // ✅ بدون both
-  bool statusValue = a["status"] == true;
+    String gender = a["gender"] ?? "male"; // ✅ بدون both
+    bool statusValue = a["status"] == true;
 
-  bool showBasic = false;
-  bool showAge = false;
+    bool showBasic = false;
+    bool showAge = false;
 
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (_) => StatefulBuilder(
-      builder: (context, setLocalState) {
-        Widget box({
-          required String title,
-          required Widget child,
-          VoidCallback? onTap,
-          bool show = true,
-        }) {
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.grey),
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => StatefulBuilder(
+        builder: (context, setLocalState) {
+          Widget box({
+            required String title,
+            required Widget child,
+            VoidCallback? onTap,
+            bool show = true,
+          }) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.grey),
+              ),
+              child: Column(
+                children: [
+                  InkWell(
+                    onTap: onTap,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(title,
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w600)),
+                        if (onTap != null)
+                          const Icon(Icons.keyboard_arrow_down),
+                      ],
+                    ),
+                  ),
+                  if (onTap == null) child,
+                  if (onTap != null && show)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: child,
+                    ),
+                ],
+              ),
+            );
+          }
+
+          return Dialog(
+            insetPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
             ),
-            child: Column(
-              children: [
-                InkWell(
-                  onTap: onTap,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 600),
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child: SingleChildScrollView(
+                  child: Column(
                     children: [
-                      Text(title,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w600)),
-                      if (onTap != null)
-                        const Icon(Icons.keyboard_arrow_down),
+                      const Text(
+                        "Edit Activity",
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // ✅ Basic Info Dropdown
+                      box(
+                        title: "Basic Info",
+                        onTap: () =>
+                            setLocalState(() => showBasic = !showBasic),
+                        show: showBasic,
+                        child: Column(
+                          children: [
+                            TextField(
+                              controller: titleController,
+                              decoration:
+                                  const InputDecoration(labelText: "Title"),
+                            ),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: descController,
+                              decoration: const InputDecoration(
+                                  labelText: "Description"),
+                            ),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: typeController,
+                              decoration:
+                                  const InputDecoration(labelText: "Type"),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // ✅ Gender (NO BOTH ❌)
+                      box(
+                        title: "Gender",
+                        child: Column(
+                          children: [
+                            RadioListTile(
+                              value: "male",
+                              groupValue: gender,
+                              title: const Text("Male"),
+                              onChanged: (v) =>
+                                  setLocalState(() => gender = v!),
+                            ),
+                            RadioListTile(
+                              value: "female",
+                              groupValue: gender,
+                              title: const Text("Female"),
+                              onChanged: (v) =>
+                                  setLocalState(() => gender = v!),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // ✅ Pricing & Capacity
+                      box(
+                        title: "Pricing",
+                        child: Column(
+                          children: [
+                            TextField(
+                              controller: priceController,
+                              keyboardType: TextInputType.number,
+                              decoration:
+                                  const InputDecoration(labelText: "Price"),
+                            ),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: capacityController,
+                              keyboardType: TextInputType.number,
+                              decoration:
+                                  const InputDecoration(labelText: "Capacity"),
+                            ),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: durationController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                  labelText: "Duration (hours)"),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // ✅ Age Range Dropdown
+                      box(
+                        title: "Age Range",
+                        onTap: () => setLocalState(() => showAge = !showAge),
+                        show: showAge,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: ageFromController,
+                                keyboardType: TextInputType.number,
+                                decoration:
+                                    const InputDecoration(labelText: "Min Age"),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: TextField(
+                                controller: ageToController,
+                                keyboardType: TextInputType.number,
+                                decoration:
+                                    const InputDecoration(labelText: "Max Age"),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // ✅ Status
+                      box(
+                        title: "Status",
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text("Active"),
+                            Switch(
+                              value: statusValue,
+                              onChanged: (val) {
+                                setLocalState(() {
+                                  statusValue = val;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(22),
+                            ),
+                          ),
+                          icon: const Icon(Icons.save),
+                          label: const Text("Save"),
+                          onPressed: () async {
+                            try {
+                              await ApiService.updateActivity(
+                                activityId: a["activity_id"],
+                                data: {
+                                  "title": titleController.text.trim(),
+                                  "description": descController.text.trim(),
+                                  "type": typeController.text.trim(),
+                                  "gender": gender,
+                                  "price":
+                                      double.parse(priceController.text.trim()),
+                                  "capacity":
+                                      int.parse(capacityController.text.trim()),
+                                  "duration":
+                                      int.parse(durationController.text.trim()),
+                                  "age_from":
+                                      int.parse(ageFromController.text.trim()),
+                                  "age_to":
+                                      int.parse(ageToController.text.trim()),
+                                  "status": statusValue,
+                                },
+                              );
+
+                              Navigator.pop(context);
+                              await _initPage();
+
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content:
+                                      Text("Activity updated successfully"),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Failed to update activity"),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                if (onTap == null) child,
-                if (onTap != null && show)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: child,
-                  ),
-              ],
-            ),
-          );
-        }
-
-        return Dialog(
-          insetPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 600),
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    const Text(
-                      "Edit Activity",
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // ✅ Basic Info Dropdown
-                    box(
-                      title: "Basic Info",
-                      onTap: () =>
-                          setLocalState(() => showBasic = !showBasic),
-                      show: showBasic,
-                      child: Column(
-                        children: [
-                          TextField(
-                            controller: titleController,
-                            decoration:
-                                const InputDecoration(labelText: "Title"),
-                          ),
-                          const SizedBox(height: 8),
-                          TextField(
-                            controller: descController,
-                            decoration:
-                                const InputDecoration(labelText: "Description"),
-                          ),
-                          const SizedBox(height: 8),
-                          TextField(
-                            controller: typeController,
-                            decoration:
-                                const InputDecoration(labelText: "Type"),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // ✅ Gender (NO BOTH ❌)
-                    box(
-                      title: "Gender",
-                      child: Column(
-                        children: [
-                          RadioListTile(
-                            value: "male",
-                            groupValue: gender,
-                            title: const Text("Male"),
-                            onChanged: (v) =>
-                                setLocalState(() => gender = v!),
-                          ),
-                          RadioListTile(
-                            value: "female",
-                            groupValue: gender,
-                            title: const Text("Female"),
-                            onChanged: (v) =>
-                                setLocalState(() => gender = v!),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // ✅ Pricing & Capacity
-                    box(
-                      title: "Pricing",
-                      child: Column(
-                        children: [
-                          TextField(
-                            controller: priceController,
-                            keyboardType: TextInputType.number,
-                            decoration:
-                                const InputDecoration(labelText: "Price"),
-                          ),
-                          const SizedBox(height: 8),
-                          TextField(
-                            controller: capacityController,
-                            keyboardType: TextInputType.number,
-                            decoration:
-                                const InputDecoration(labelText: "Capacity"),
-                          ),
-                          const SizedBox(height: 8),
-                          TextField(
-                            controller: durationController,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                                labelText: "Duration (hours)"),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // ✅ Age Range Dropdown
-                    box(
-                      title: "Age Range",
-                      onTap: () =>
-                          setLocalState(() => showAge = !showAge),
-                      show: showAge,
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: ageFromController,
-                              keyboardType: TextInputType.number,
-                              decoration:
-                                  const InputDecoration(labelText: "Min Age"),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: TextField(
-                              controller: ageToController,
-                              keyboardType: TextInputType.number,
-                              decoration:
-                                  const InputDecoration(labelText: "Max Age"),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // ✅ Status
-                    box(
-                      title: "Status",
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text("Active"),
-                          Switch(
-                            value: statusValue,
-                            onChanged: (val) {
-                              setLocalState(() {
-                                statusValue = val;
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(22),
-                          ),
-                        ),
-                        icon: const Icon(Icons.save),
-                        label: const Text("Save"),
-                        onPressed: () async {
-                          try {
-                            await ApiService.updateActivity(
-                              activityId: a["activity_id"],
-                              data: {
-                                "title": titleController.text.trim(),
-                                "description": descController.text.trim(),
-                                "type": typeController.text.trim(),
-                                "gender": gender,
-                                "price": double.parse(
-                                    priceController.text.trim()),
-                                "capacity": int.parse(
-                                    capacityController.text.trim()),
-                                "duration": int.parse(
-                                    durationController.text.trim()),
-                                "age_from": int.parse(
-                                    ageFromController.text.trim()),
-                                "age_to": int.parse(
-                                    ageToController.text.trim()),
-                                "status": statusValue,
-                              },
-                            );
-
-                            Navigator.pop(context);
-                            await _initPage();
-
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content:
-                                    Text("Activity updated successfully"),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-                          } catch (e) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("Failed to update activity"),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        },
-                      ),
-                    ),
-                  ],
-                ),
               ),
             ),
-          ),
-        );
-      },
-    ),
-  );
-}
-
+          );
+        },
+      ),
+    );
   }
+}
