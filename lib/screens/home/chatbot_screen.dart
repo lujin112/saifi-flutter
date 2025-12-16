@@ -22,7 +22,14 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
   _messages.add({
     "sender": "bot",
-    "text": "Hi 👋 I'm the Saifi Assistant. How can I help you today?You can ask me to help you add a child, book an activity, track your bookings, kids information or about us.",
+    "text": "Hi 👋 I'm the Saifi Assistant!\n\n"
+          "I can help you with:\n"
+          "Add a child\n"
+          "Book an activity\n"
+          "Manage your bookings\n"
+          "Kids information\n"
+          "About Saifi & Terms\n\n"
+          "Just tell me what you need ",
   });
 }
 
